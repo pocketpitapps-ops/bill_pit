@@ -66,7 +66,7 @@ const Map<ExpenseCategory, CategoryData> categories = {
 
 const Map<ExpenseType, String> expenseTypeLabels = {
   ExpenseType.fixed: 'Fixa',
-  ExpenseType.monthly: 'Mensal',
+  ExpenseType.monthly: 'Fixa',
   ExpenseType.periodic: 'Periódica',
   ExpenseType.unique: 'Única',
 };

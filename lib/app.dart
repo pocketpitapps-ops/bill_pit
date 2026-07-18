@@ -1,7 +1,7 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
 import 'core/theme/bill_pit_theme.dart';
-import 'features/home/home_page.dart';
+import 'features/intro/splash_intro_page.dart';
 
 class BillPitApp extends StatelessWidget {
   const BillPitApp({super.key});
@@ -14,7 +14,7 @@ class BillPitApp extends StatelessWidget {
       theme: BillPitTheme.light,
       darkTheme: BillPitTheme.dark,
       themeMode: ThemeMode.system,
-      home: const HomePage(),
+      home: const SplashIntroPage(),
     );
   }
 }

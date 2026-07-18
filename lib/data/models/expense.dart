@@ -1,4 +1,3 @@
-// lib/data/models/expense.dart
 import 'package:isar_community/isar.dart';
 
 part 'expense.g.dart';
@@ -9,16 +8,17 @@ class Expense {
 
   late String name;
 
-  late String category; // ExpenseCategory.name
+  late String category;
 
   late double amount;
 
   @enumerated
   late ExpenseType type;
 
-  int? dueDay; // dia do mês (1-31)
+  int? dueDay;
 
   DateTime? startDate;
+
   DateTime? endDate;
 
   late bool isPaid;

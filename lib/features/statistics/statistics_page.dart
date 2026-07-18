@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../core/services/category_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
-import '../../core/constants/categories.dart';
 import '../../core/theme/bill_pit_theme.dart';
 
 class StatisticsPage extends StatelessWidget {
@@ -12,6 +12,7 @@ class StatisticsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<ExpenseRepository>();
+    final catService = context.watch<CategoryService>();
 
     return SafeArea(
       child: FutureBuilder<List<Expense>>(
@@ -63,14 +64,11 @@ class StatisticsPage extends StatelessWidget {
                     sectionsSpace: 2,
                     centerSpaceRadius: 40,
                     sections: sortedCats.map((entry) {
-                      final catData = categories.values.firstWhere(
-                        (c) => c.name == entry.key,
-                        orElse: () => const CategoryData('Outro', Icons.more_horiz, Colors.grey),
-                      );
+                      final catData = catService.findByName(entry.key);
                       final pct = grandTotal > 0 ? (entry.value / grandTotal * 100) : 0.0;
                       return PieChartSectionData(
                         value: entry.value,
-                        color: catData.color,
+                        color: catData?.color ?? Colors.grey,
                         radius: 50,
                         title: '${pct.toStringAsFixed(0)}%',
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
@@ -83,16 +81,13 @@ class StatisticsPage extends StatelessWidget {
               Text('Detalhe por Categoria', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               ...sortedCats.map((entry) {
-                final catData = categories.values.firstWhere(
-                  (c) => c.name == entry.key,
-                  orElse: () => const CategoryData('Outro', Icons.more_horiz, Colors.grey),
-                );
+                final catData = catService.findByName(entry.key);
                 final pct = grandTotal > 0 ? entry.value / grandTotal : 0.0;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
                     children: [
-                      Icon(catData.icon, color: catData.color, size: 20),
+                      Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -110,7 +105,7 @@ class StatisticsPage extends StatelessWidget {
                             LinearProgressIndicator(
                               value: pct,
                               backgroundColor: Colors.grey.shade200,
-                              valueColor: AlwaysStoppedAnimation(catData.color),
+                              valueColor: AlwaysStoppedAnimation(catData?.color ?? Colors.grey),
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ],

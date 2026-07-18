@@ -3,6 +3,7 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/category_service.dart';
 import 'core/services/notification_service.dart';
 import 'data/models/expense.dart';
 import 'data/repositories/expense_repository.dart';
@@ -20,6 +21,9 @@ void main() async {
   final repo = ExpenseRepository(isar);
   await repo.seedIfEmpty();
 
+  final categoryService = CategoryService();
+  await categoryService.load();
+
   final notificationService = NotificationService(repo: repo);
   await notificationService.init();
   await NotificationService.initWorkmanager();
@@ -28,6 +32,7 @@ void main() async {
     MultiProvider(
       providers: [
         Provider<ExpenseRepository>.value(value: repo),
+        ChangeNotifierProvider<CategoryService>.value(value: categoryService),
         Provider<NotificationService>.value(value: notificationService),
       ],
       child: const BillPitApp(),

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/category_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
-import '../../core/constants/categories.dart';
 
 class CategoriesPage extends StatelessWidget {
   const CategoriesPage({super.key});
@@ -10,6 +10,7 @@ class CategoriesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<ExpenseRepository>();
+    final catService = context.watch<CategoryService>();
 
     return SafeArea(
       child: FutureBuilder<List<Expense>>(
@@ -62,10 +63,7 @@ class CategoriesPage extends StatelessWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final entry = sorted[index];
-                      final catData = categories.values.firstWhere(
-                        (c) => c.name == entry.key,
-                        orElse: () => const CategoryData('Outro', Icons.more_horiz, Colors.grey),
-                      );
+                      final catData = catService.findByName(entry.key);
                       final total = entry.value.fold<double>(0, (s, e) => s + e.amount);
                       final paid = entry.value.where((e) => e.isPaid).fold<double>(0, (s, e) => s + e.amount);
                       final percentage = grandTotal > 0 ? (total / grandTotal * 100) : 0.0;
@@ -74,8 +72,8 @@ class CategoriesPage extends StatelessWidget {
                         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                         child: ExpansionTile(
                           leading: CircleAvatar(
-                            backgroundColor: catData.color.withValues(alpha: 0.15),
-                            child: Icon(catData.icon, color: catData.color),
+                            backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
+                            child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey),
                           ),
                           title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)),
                           subtitle: Text(
@@ -94,7 +92,7 @@ class CategoriesPage extends StatelessWidget {
                                   LinearProgressIndicator(
                                     value: grandTotal > 0 ? total / grandTotal : 0,
                                     backgroundColor: Colors.grey.shade200,
-                                    valueColor: AlwaysStoppedAnimation(catData.color),
+                                    valueColor: AlwaysStoppedAnimation(catData?.color ?? Colors.grey),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   const SizedBox(height: 8),

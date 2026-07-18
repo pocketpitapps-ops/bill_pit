@@ -152,7 +152,7 @@ class ExpenseRepository {
       ..type = type
       ..dueDay = dueDay
       ..isPaid = false
-      ..notifyDaysBefore = 3
+      ..notifyDaysBefore = 1
       ..isActive = true
       ..createdAt = DateTime.now();
   }

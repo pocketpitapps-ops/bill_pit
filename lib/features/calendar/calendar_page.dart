@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/constants/categories.dart';
+import '../../core/services/category_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
-import '../../core/constants/categories.dart';
 import '../expense_form/expense_form_page.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -151,6 +152,8 @@ class _CalendarPageState extends State<CalendarPage> {
   }
 
   void _showDayExpenses(BuildContext context, int day, List<Expense> expenses) {
+    final catService = context.read<CategoryService>();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -183,15 +186,12 @@ class _CalendarPageState extends State<CalendarPage> {
             ),
             const SizedBox(height: 12),
             ...expenses.map((e) {
-              final catData = categories.values.firstWhere(
-                (c) => c.name == e.category,
-                orElse: () => const CategoryData('Outro', Icons.more_horiz, Colors.grey),
-              );
+              final catData = catService.findByName(e.category);
               return Card(
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: catData.color.withValues(alpha: 0.15),
-                    child: Icon(catData.icon, color: catData.color, size: 20),
+                    backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
+                    child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
                   ),
                   title: Text(e.name),
                   subtitle: Text('${e.amount.toStringAsFixed(2)}€ · ${expenseTypeLabels[e.type]}'),
