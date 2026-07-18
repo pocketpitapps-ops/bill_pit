@@ -1,9 +1,9 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
+import 'core/services/notification_service.dart';
 import 'data/models/expense.dart';
 import 'data/repositories/expense_repository.dart';
 import 'app.dart';
@@ -20,9 +20,16 @@ void main() async {
   final repo = ExpenseRepository(isar);
   await repo.seedIfEmpty();
 
+  final notificationService = NotificationService(repo: repo);
+  await notificationService.init();
+  await NotificationService.initWorkmanager();
+
   runApp(
-    Provider<ExpenseRepository>.value(
-      value: repo,
+    MultiProvider(
+      providers: [
+        Provider<ExpenseRepository>.value(value: repo),
+        Provider<NotificationService>.value(value: notificationService),
+      ],
       child: const BillPitApp(),
     ),
   );

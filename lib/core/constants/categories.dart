@@ -1,12 +1,6 @@
 // lib/core/constants/categories.dart
 import 'package:flutter/material.dart';
-
-enum ExpenseType {
-  fixed,      // Despesa fixa (ex: renda)
-  monthly,    // Mensal (ex: luz, água)
-  periodic,   // Periódica (ex: seguro anual)
-  unique,     // Única (ex: avaria)
-}
+import '../../data/models/expense.dart';
 
 enum ExpenseCategory {
   housing,    // Casa
