@@ -3,6 +3,12 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# Google Play Core (missing classes - app doesn't use Play Store dynamic delivery)
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+-dontwarn com.google.android.play.core.common.**
+
 # Keep annotations
 -keepattributes *Annotation*
 
@@ -27,7 +33,6 @@
 -keep @io.isar.annotations.* class *
 -keep class io.isar.** { *; }
 -keep class io.isar.core.** { *; }
--keep class io.isar.**$$serializer { *; }
 -keepclassmembers class io.isar.** {
     <fields>;
     <methods>;
@@ -41,15 +46,10 @@
 -keep class com.dexterous.** { *; }
 -keep class com.jakewharton.** { *; }
 
-# Provider
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.embedding.** { *; }
-
 # Google Fonts
 -keep class com.google.** { *; }
 
-# Keep data classes for Isar serialization
+# App data classes
 -keep class com.pocketpitapps.bill_pit.data.models.** { *; }
 -keep class com.pocketpitapps.bill_pit.data.models.Expense { *; }
 
