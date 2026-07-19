@@ -69,7 +69,7 @@ void main() async {
     runApp(
       MultiProvider(
         providers: [
-          Provider<ExpenseRepository>.value(value: repo!),
+          Provider<ExpenseRepository>.value(value: repo),
           ChangeNotifierProvider<CategoryService>.value(value: categoryService),
           if (notificationService != null)
             Provider<NotificationService>.value(value: notificationService),
