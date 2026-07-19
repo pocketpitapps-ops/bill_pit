@@ -12,10 +12,24 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'Ocorreu um erro: ${details.exceptionAsString()}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+
   Isar? isar;
   ExpenseRepository? repo;
-  CategoryService? categoryService;
-  NotificationService? notificationService;
 
   try {
     final dir = await getApplicationDocumentsDirectory();
@@ -24,43 +38,77 @@ void main() async {
       directory: dir.path,
       name: 'bill_pit',
     );
-
     repo = ExpenseRepository(isar);
     await repo.seedIfEmpty();
   } catch (e) {
     debugPrint('Error initializing Isar: $e');
+    repo = null;
   }
 
+  CategoryService categoryService;
   try {
     categoryService = CategoryService();
-    await categoryService!.load();
+    await categoryService.load();
   } catch (e) {
     debugPrint('Error loading categories: $e');
     categoryService = CategoryService();
   }
 
-  try {
-    if (repo != null) {
+  NotificationService? notificationService;
+  if (repo != null) {
+    try {
       notificationService = NotificationService(repo: repo);
       await notificationService.init();
-      await NotificationService.initWorkmanager();
+    } catch (e) {
+      debugPrint('Error initializing notifications: $e');
+      notificationService = null;
     }
-  } catch (e) {
-    debugPrint('Error initializing notifications: $e');
-    notificationService = null;
   }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        if (repo != null) Provider<ExpenseRepository>.value(value: repo),
-        ChangeNotifierProvider<CategoryService>.value(
-          value: categoryService ?? CategoryService(),
+  if (repo != null) {
+    runApp(
+      MultiProvider(
+        providers: [
+          Provider<ExpenseRepository>.value(value: repo!),
+          ChangeNotifierProvider<CategoryService>.value(value: categoryService),
+          if (notificationService != null)
+            Provider<NotificationService>.value(value: notificationService),
+        ],
+        child: const BillPitApp(),
+      ),
+    );
+
+    try {
+      await NotificationService.initWorkmanager();
+    } catch (e) {
+      debugPrint('Error initializing workmanager: $e');
+    }
+  } else {
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                const Text(
+                  'Não foi possível inicializar a base de dados.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Por favor, reinstale a aplicação.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
         ),
-        if (notificationService != null)
-          Provider<NotificationService>.value(value: notificationService),
-      ],
-      child: const BillPitApp(),
-    ),
-  );
+      ),
+    );
+  }
 }
