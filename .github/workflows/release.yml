@@ -32,7 +32,7 @@ jobs:
         run: flutter pub get
 
       - name: Decode keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/billpit-release.jks
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/billpit-release.jks
 
       - name: Create key.properties
         run: |
@@ -42,6 +42,7 @@ jobs:
           keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
           storeFile=billpit-release.jks
           EOF
+          sed -i 's/^          //' android/key.properties
 
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
