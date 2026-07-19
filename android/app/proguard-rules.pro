@@ -2,6 +2,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+-dontoptimize
 
 # Google Play Core (missing classes - app doesn't use Play Store dynamic delivery)
 -dontwarn com.google.android.play.core.splitcompat.**
