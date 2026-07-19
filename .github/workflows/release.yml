@@ -45,7 +45,7 @@ jobs:
           sed -i 's/^          //' android/key.properties
 
       - name: Build APK
-        run: flutter build apk --release --no-tree-shake-icons --verbose 2>&1 | tee /tmp/flutter_build.log; code=${PIPESTATUS[0]}; if [ $code -ne 0 ]; then echo "=== LAST 80 LINES OF BUILD LOG ==="; tail -80 /tmp/flutter_build.log; fi; exit $code
+        run: flutter build apk --release --no-tree-shake-icons
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2 -Xmx4g"
 
