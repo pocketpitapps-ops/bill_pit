@@ -44,8 +44,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Isar generated files
-*.g.dart
+# Build runner generated files (tracked for Isar)
+# *.g.dart
 
 # Build runner
 build/
