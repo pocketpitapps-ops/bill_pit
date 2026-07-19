@@ -54,5 +54,9 @@ build/
 *.env
 .env
 
+# Keystore (NEVER commit)
+*.jks
+key.properties
+
 # Memory dumps
 *.hprof

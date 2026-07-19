@@ -11,29 +11,54 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final dir = await getApplicationDocumentsDirectory();
-  final isar = await Isar.open(
-    [ExpenseSchema],
-    directory: dir.path,
-    name: 'bill_pit',
-  );
 
-  final repo = ExpenseRepository(isar);
-  await repo.seedIfEmpty();
+  Isar? isar;
+  ExpenseRepository? repo;
+  CategoryService? categoryService;
+  NotificationService? notificationService;
 
-  final categoryService = CategoryService();
-  await categoryService.load();
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    isar = await Isar.open(
+      [ExpenseSchema],
+      directory: dir.path,
+      name: 'bill_pit',
+    );
 
-  final notificationService = NotificationService(repo: repo);
-  await notificationService.init();
-  await NotificationService.initWorkmanager();
+    repo = ExpenseRepository(isar);
+    await repo.seedIfEmpty();
+  } catch (e) {
+    debugPrint('Error initializing Isar: $e');
+  }
+
+  try {
+    categoryService = CategoryService();
+    await categoryService!.load();
+  } catch (e) {
+    debugPrint('Error loading categories: $e');
+    categoryService = CategoryService();
+  }
+
+  try {
+    if (repo != null) {
+      notificationService = NotificationService(repo: repo);
+      await notificationService.init();
+      await NotificationService.initWorkmanager();
+    }
+  } catch (e) {
+    debugPrint('Error initializing notifications: $e');
+    notificationService = null;
+  }
 
   runApp(
     MultiProvider(
       providers: [
-        Provider<ExpenseRepository>.value(value: repo),
-        ChangeNotifierProvider<CategoryService>.value(value: categoryService),
-        Provider<NotificationService>.value(value: notificationService),
+        if (repo != null) Provider<ExpenseRepository>.value(value: repo),
+        ChangeNotifierProvider<CategoryService>.value(
+          value: categoryService ?? CategoryService(),
+        ),
+        if (notificationService != null)
+          Provider<NotificationService>.value(value: notificationService),
       ],
       child: const BillPitApp(),
     ),
