@@ -109,6 +109,12 @@ class CategoryService extends ChangeNotifier {
     }
   }
 
+  bool nameExists(String name) => _categories.any((c) => c.name.toLowerCase() == name.toLowerCase());
+
+  List<int> get usedIconCodePoints => _categories.map((c) => c.iconCodePoint).toList();
+
+  List<int> get usedColorValues => _categories.map((c) => c.colorValue).toList();
+
   List<AppCategory> get defaults => _categories.where((c) => c.isDefault).toList();
   List<AppCategory> get custom => _categories.where((c) => !c.isDefault).toList();
 
@@ -124,13 +130,10 @@ class CategoryService extends ChangeNotifier {
   }
 
   static List<AppCategory> _defaults() => const [
-        AppCategory(name: 'Casa', iconCodePoint: 0xe559, colorValue: 0xFF6366F1, isDefault: true),
-        AppCategory(name: 'Transporte', iconCodePoint: 0xe531, colorValue: 0xFF3B82F6, isDefault: true),
-        AppCategory(name: 'Serviços', iconCodePoint: 0xe56c, colorValue: 0xFFF59E0B, isDefault: true),
-        AppCategory(name: 'Saúde', iconCodePoint: 0xe548, colorValue: 0xFFEF4444, isDefault: true),
-        AppCategory(name: 'Educação', iconCodePoint: 0xe553, colorValue: 0xFF8B5CF6, isDefault: true),
-        AppCategory(name: 'Alimentação', iconCodePoint: 0xe553, colorValue: 0xFF10B981, isDefault: true),
-        AppCategory(name: 'Lazer', iconCodePoint: 0xe5a0, colorValue: 0xFFEC4899, isDefault: true),
-        AppCategory(name: 'Outro', iconCodePoint: 0xe567, colorValue: 0xFF64748B, isDefault: true),
+        AppCategory(name: 'Casa', iconCodePoint: 0xe559, colorValue: 0xFF3B82F6, isDefault: true),
+        AppCategory(name: 'Veículo', iconCodePoint: 0xe531, colorValue: 0xFF14B8A6, isDefault: true),
+        AppCategory(name: 'Serviço', iconCodePoint: 0xef06, colorValue: 0xFFF59E0B, isDefault: true),
+        AppCategory(name: 'Crédito', iconCodePoint: 0xef8f, colorValue: 0xFFEF4444, isDefault: true),
+        AppCategory(name: 'Saúde', iconCodePoint: 0xe548, colorValue: 0xFF10B981, isDefault: true),
       ];
 }

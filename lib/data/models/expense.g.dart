@@ -34,32 +34,42 @@ const ExpenseSchema = CollectionSchema(
       name: r'endDate',
       type: IsarType.dateTime,
     ),
-    r'isActive': PropertySchema(id: 5, name: r'isActive', type: IsarType.bool),
-    r'isPaid': PropertySchema(id: 6, name: r'isPaid', type: IsarType.bool),
-    r'name': PropertySchema(id: 7, name: r'name', type: IsarType.string),
+    r'installments': PropertySchema(
+      id: 5,
+      name: r'installments',
+      type: IsarType.long,
+    ),
+    r'isActive': PropertySchema(id: 6, name: r'isActive', type: IsarType.bool),
+    r'isPaid': PropertySchema(id: 7, name: r'isPaid', type: IsarType.bool),
+    r'name': PropertySchema(id: 8, name: r'name', type: IsarType.string),
     r'notifyDaysBefore': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'notifyDaysBefore',
       type: IsarType.long,
     ),
     r'paidDate': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'paidDate',
       type: IsarType.dateTime,
     ),
+    r'paidMonths': PropertySchema(
+      id: 11,
+      name: r'paidMonths',
+      type: IsarType.longList,
+    ),
     r'startDate': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'type': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'type',
       type: IsarType.byte,
       enumMap: _ExpensetypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -88,6 +98,7 @@ int _expenseEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.category.length * 3;
   bytesCount += 3 + object.name.length * 3;
+  bytesCount += 3 + object.paidMonths.length * 8;
   return bytesCount;
 }
 
@@ -102,14 +113,16 @@ void _expenseSerialize(
   writer.writeDateTime(offsets[2], object.createdAt);
   writer.writeLong(offsets[3], object.dueDay);
   writer.writeDateTime(offsets[4], object.endDate);
-  writer.writeBool(offsets[5], object.isActive);
-  writer.writeBool(offsets[6], object.isPaid);
-  writer.writeString(offsets[7], object.name);
-  writer.writeLong(offsets[8], object.notifyDaysBefore);
-  writer.writeDateTime(offsets[9], object.paidDate);
-  writer.writeDateTime(offsets[10], object.startDate);
-  writer.writeByte(offsets[11], object.type.index);
-  writer.writeDateTime(offsets[12], object.updatedAt);
+  writer.writeLong(offsets[5], object.installments);
+  writer.writeBool(offsets[6], object.isActive);
+  writer.writeBool(offsets[7], object.isPaid);
+  writer.writeString(offsets[8], object.name);
+  writer.writeLong(offsets[9], object.notifyDaysBefore);
+  writer.writeDateTime(offsets[10], object.paidDate);
+  writer.writeLongList(offsets[11], object.paidMonths);
+  writer.writeDateTime(offsets[12], object.startDate);
+  writer.writeByte(offsets[13], object.type.index);
+  writer.writeDateTime(offsets[14], object.updatedAt);
 }
 
 Expense _expenseDeserialize(
@@ -125,16 +138,18 @@ Expense _expenseDeserialize(
   object.dueDay = reader.readLongOrNull(offsets[3]);
   object.endDate = reader.readDateTimeOrNull(offsets[4]);
   object.id = id;
-  object.isActive = reader.readBool(offsets[5]);
-  object.isPaid = reader.readBool(offsets[6]);
-  object.name = reader.readString(offsets[7]);
-  object.notifyDaysBefore = reader.readLong(offsets[8]);
-  object.paidDate = reader.readDateTimeOrNull(offsets[9]);
-  object.startDate = reader.readDateTimeOrNull(offsets[10]);
+  object.installments = reader.readLongOrNull(offsets[5]);
+  object.isActive = reader.readBool(offsets[6]);
+  object.isPaid = reader.readBool(offsets[7]);
+  object.name = reader.readString(offsets[8]);
+  object.notifyDaysBefore = reader.readLong(offsets[9]);
+  object.paidDate = reader.readDateTimeOrNull(offsets[10]);
+  object.paidMonths = reader.readLongList(offsets[11]) ?? [];
+  object.startDate = reader.readDateTimeOrNull(offsets[12]);
   object.type =
-      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[11])] ??
+      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[13])] ??
       ExpenseType.fixed;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[12]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[14]);
   return object;
 }
 
@@ -156,22 +171,26 @@ P _expenseDeserializeProp<P>(
     case 4:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 5:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 6:
       return (reader.readBool(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 8:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 9:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 10:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 11:
+      return (reader.readLongList(offset) ?? []) as P;
+    case 12:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 13:
       return (_ExpensetypeValueEnumMap[reader.readByteOrNull(offset)] ??
               ExpenseType.fixed)
           as P;
-    case 12:
+    case 14:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -769,6 +788,82 @@ extension ExpenseQueryFilter
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> installmentsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'installments'),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  installmentsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'installments'),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> installmentsEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'installments', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> installmentsGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'installments',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> installmentsLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'installments',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> installmentsBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'installments',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> isActiveEqualTo(
     bool value,
   ) {
@@ -1065,6 +1160,112 @@ extension ExpenseQueryFilter
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'paidMonths', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsElementGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'paidMonths',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsElementLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'paidMonths',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'paidMonths',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> paidMonthsLengthEqualTo(
+    int length,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'paidMonths', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> paidMonthsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'paidMonths', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> paidMonthsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'paidMonths', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'paidMonths', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  paidMonthsLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'paidMonths', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> paidMonthsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'paidMonths',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> startDateIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -1342,6 +1543,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByInstallments() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'installments', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByInstallmentsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'installments', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByIsActive() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isActive', Sort.asc);
@@ -1513,6 +1726,18 @@ extension ExpenseQuerySortThenBy
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByInstallments() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'installments', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByInstallmentsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'installments', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByIsActive() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isActive', Sort.asc);
@@ -1644,6 +1869,12 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Expense, Expense, QDistinct> distinctByInstallments() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'installments');
+    });
+  }
+
   QueryBuilder<Expense, Expense, QDistinct> distinctByIsActive() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isActive');
@@ -1673,6 +1904,12 @@ extension ExpenseQueryWhereDistinct
   QueryBuilder<Expense, Expense, QDistinct> distinctByPaidDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'paidDate');
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QDistinct> distinctByPaidMonths() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'paidMonths');
     });
   }
 
@@ -1733,6 +1970,12 @@ extension ExpenseQueryProperty
     });
   }
 
+  QueryBuilder<Expense, int?, QQueryOperations> installmentsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'installments');
+    });
+  }
+
   QueryBuilder<Expense, bool, QQueryOperations> isActiveProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isActive');
@@ -1760,6 +2003,12 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, DateTime?, QQueryOperations> paidDateProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'paidDate');
+    });
+  }
+
+  QueryBuilder<Expense, List<int>, QQueryOperations> paidMonthsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'paidMonths');
     });
   }
 

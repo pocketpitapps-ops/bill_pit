@@ -149,7 +149,8 @@ Future<void> _sendWeeklyPreview() async {
 
   final upcoming = all.where((e) {
     if (e.isPaid || e.dueDay == null) return false;
-    final dueDate = DateTime(now.year, now.month, e.dueDay!);
+    final effectiveDay = e.effectiveDueDay(now.month, now.year);
+    final dueDate = DateTime(now.year, now.month, effectiveDay);
     final diff = dueDate.difference(today).inDays;
     return diff >= 0 && diff <= 7;
   }).toList()..sort((a, b) => (a.dueDay ?? 0).compareTo(b.dueDay ?? 0));
@@ -195,7 +196,8 @@ Future<void> _sendOverdueReminder() async {
 
   final overdue = all.where((e) {
     if (e.isPaid || e.dueDay == null) return false;
-    final dueDate = DateTime(now.year, now.month, e.dueDay!);
+    final effectiveDay = e.effectiveDueDay(now.month, now.year);
+    final dueDate = DateTime(now.year, now.month, effectiveDay);
     return dueDate.isBefore(today);
   }).toList();
 

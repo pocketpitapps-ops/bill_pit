@@ -14,9 +14,38 @@ class ExpensesPage extends StatefulWidget {
 
 class _ExpensesPageState extends State<ExpensesPage> {
   String? _selectedCategory;
+  late DateTime _selectedMonth;
   Key _key = UniqueKey();
 
+  static const _monthNames = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month);
+  }
+
   void _refresh() => setState(() => _key = UniqueKey());
+
+  void _prevMonth() => setState(() {
+    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    _key = UniqueKey();
+  });
+
+  void _nextMonth() => setState(() {
+    _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+    _key = UniqueKey();
+  });
+
+  bool get _isMaxFuture {
+    final now = DateTime.now();
+    final maxMonth = DateTime(now.year, now.month + 6);
+    return !_selectedMonth.isBefore(maxMonth);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,23 +56,44 @@ class _ExpensesPageState extends State<ExpensesPage> {
       body: SafeArea(
         child: FutureBuilder<List<Expense>>(
           key: _key,
-          future: repo.getAll(),
+          future: repo.getByMonth(_selectedMonth.month, _selectedMonth.year),
           builder: (context, snapshot) {
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
             final allExpenses = snapshot.data!;
-            final expenses = _selectedCategory != null
+            final filtered = _selectedCategory != null
                 ? allExpenses.where((e) => e.category == _selectedCategory).toList()
                 : allExpenses;
 
-            final total = expenses.fold<double>(0, (s, e) => s + e.amount);
+            final monthKey = Expense.monthKey(_selectedMonth.month, _selectedMonth.year);
+            final now = DateTime.now();
+            final unpaidFirst = <Expense>[];
+            final paidLast = <Expense>[];
+            for (final e in filtered) {
+              if (e.paidMonths.contains(monthKey)) {
+                paidLast.add(e);
+              } else {
+                unpaidFirst.add(e);
+              }
+            }
+            final sorted = [...unpaidFirst, ...paidLast];
+            final unpaidTotal = unpaidFirst.fold<double>(0, (s, e) => s + e.amount);
+
+            final overdueExpenses = unpaidFirst.where((e) {
+              final effectiveDay = e.effectiveDueDay(_selectedMonth.month, _selectedMonth.year);
+              final dueDate = DateTime(_selectedMonth.year, _selectedMonth.month, effectiveDay);
+              return dueDate.isBefore(DateTime(now.year, now.month, now.day));
+            }).toList();
+            final overdueTotal = overdueExpenses.fold<double>(0, (s, e) => s + e.amount);
+            final hasOverdue = overdueExpenses.isNotEmpty;
+            final allPaid = unpaidFirst.isEmpty && filtered.isNotEmpty;
 
             return CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -51,12 +101,64 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           'Despesas',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        Text(
-                          '${total.toStringAsFixed(2)}€',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.primary,
+                        if (allPaid)
+                          Text(
+                            'Liquidado',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          )
+                        else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '${unpaidTotal.toStringAsFixed(2)}€',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.amber.shade700,
+                                ),
+                              ),
+                              if (hasOverdue)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    '(${overdueTotal.toStringAsFixed(2)}€ em dívida)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: _prevMonth,
+                          icon: const Icon(Icons.chevron_left),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_monthNames[_selectedMonth.month - 1]} ${_selectedMonth.year}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: _isMaxFuture ? null : _nextMonth,
+                          icon: const Icon(Icons.chevron_right),
                         ),
                       ],
                     ),
@@ -94,9 +196,9 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     ),
                   ),
                 ),
-                if (expenses.isEmpty)
+                if (sorted.isEmpty)
                   const SliverFillRemaining(
-                    child: Center(child: Text('Sem despesas nesta categoria.')),
+                    child: Center(child: Text('Sem despesas neste mês.')),
                   )
                 else
                   SliverPadding(
@@ -104,10 +206,12 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _ExpenseTile(
-                          expense: expenses[index],
+                          expense: sorted[index],
+                          month: _selectedMonth.month,
+                          year: _selectedMonth.year,
                           onRefresh: _refresh,
                         ),
-                        childCount: expenses.length,
+                        childCount: sorted.length,
                       ),
                     ),
                   ),
@@ -132,18 +236,30 @@ class _ExpensesPageState extends State<ExpensesPage> {
 
 class _ExpenseTile extends StatelessWidget {
   final Expense expense;
+  final int month;
+  final int year;
   final VoidCallback onRefresh;
-  const _ExpenseTile({required this.expense, required this.onRefresh});
+  const _ExpenseTile({required this.expense, required this.month, required this.year, required this.onRefresh});
+
+  bool get _isVariable {
+    if (expense.type == ExpenseType.monthly) return true;
+    if (expense.type == ExpenseType.periodic && expense.notifyDaysBefore < 0) return true;
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
     final repo = context.read<ExpenseRepository>();
     final catService = context.read<CategoryService>();
-    final paid = expense.isPaid;
+    final paid = expense.isPaidInMonth(month, year);
     final amountStr = '${expense.amount.toStringAsFixed(2)}€';
-    final dueLabel = expense.dueDay != null ? 'Dia ${expense.dueDay}' : '';
+    final effectiveDay = expense.effectiveDueDay(month, year);
+    final dueLabel = 'Dia $effectiveDay';
 
     final catData = catService.findByName(expense.category);
+
+    final now = DateTime.now();
+    final isOverdue = !paid && DateTime(year, month, effectiveDay).isBefore(DateTime(now.year, now.month, now.day));
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -152,20 +268,37 @@ class _ExpenseTile extends StatelessWidget {
           backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
           child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
         ),
-        title: Text(expense.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('$dueLabel · ${expense.category}'),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(expense.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            if (_isVariable && !paid)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Icon(Icons.edit_note, size: 18, color: Colors.amber.shade700),
+              ),
+          ],
+        ),
+        subtitle: Text(
+          '$dueLabel · ${expense.category}',
+          style: TextStyle(
+            color: isOverdue ? Colors.red.shade400 : null,
+            fontSize: 13,
+          ),
+        ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(amountStr, style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: paid ? Colors.green : Colors.red,
+              color: paid ? Colors.green : (isOverdue ? Colors.red : Colors.amber.shade700),
             )),
             const SizedBox(width: 4),
             Checkbox(
               value: paid,
               onChanged: (_) async {
-                await repo.togglePaid(expense.id);
+                await repo.togglePaidMonth(expense.id, month, year);
                 onRefresh();
               },
               activeColor: Colors.green,

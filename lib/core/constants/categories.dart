@@ -1,16 +1,12 @@
-// lib/core/constants/categories.dart
 import 'package:flutter/material.dart';
 import '../../data/models/expense.dart';
 
 enum ExpenseCategory {
   housing,    // Casa
-  transport,  // Transporte
-  services,   // Serviços
+  vehicle,    // Veículo
+  services,   // Serviço
+  credit,     // Crédito
   health,     // Saúde
-  education,  // Educação
-  food,       // Alimentação
-  leisure,    // Lazer
-  other,      // Outro
 }
 
 class CategoryData {
@@ -25,42 +21,27 @@ const Map<ExpenseCategory, CategoryData> categories = {
   ExpenseCategory.housing: CategoryData(
     'Casa',
     Icons.home_outlined,
-    Color(0xFF6366F1),
-  ),
-  ExpenseCategory.transport: CategoryData(
-    'Transporte',
-    Icons.directions_car_outlined,
     Color(0xFF3B82F6),
   ),
+  ExpenseCategory.vehicle: CategoryData(
+    'Veículo',
+    Icons.directions_car_outlined,
+    Color(0xFF14B8A6),
+  ),
   ExpenseCategory.services: CategoryData(
-    'Serviços',
-    Icons.bolt_outlined,
+    'Serviço',
+    Icons.build_outlined,
     Color(0xFFF59E0B),
+  ),
+  ExpenseCategory.credit: CategoryData(
+    'Crédito',
+    Icons.credit_card_outlined,
+    Color(0xFFEF4444),
   ),
   ExpenseCategory.health: CategoryData(
     'Saúde',
     Icons.favorite_outline,
-    Color(0xFFEF4444),
-  ),
-  ExpenseCategory.education: CategoryData(
-    'Educação',
-    Icons.school_outlined,
-    Color(0xFF8B5CF6),
-  ),
-  ExpenseCategory.food: CategoryData(
-    'Alimentação',
-    Icons.restaurant_outlined,
     Color(0xFF10B981),
-  ),
-  ExpenseCategory.leisure: CategoryData(
-    'Lazer',
-    Icons.sports_esports_outlined,
-    Color(0xFFEC4899),
-  ),
-  ExpenseCategory.other: CategoryData(
-    'Outro',
-    Icons.more_horiz,
-    Color(0xFF64748B),
   ),
 };
 

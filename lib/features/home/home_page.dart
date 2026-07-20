@@ -102,7 +102,8 @@ class _DashboardTab extends StatelessWidget {
               return diff >= 0 && diff <= 7;
             }
             if (e.dueDay == null) return false;
-            final dueDate = DateTime(now.year, now.month, e.dueDay!);
+            final effectiveDay = e.effectiveDueDay(now.month, now.year);
+            final dueDate = DateTime(now.year, now.month, effectiveDay);
             final diff = dueDate.difference(today).inDays;
             return diff >= 0 && diff <= 7;
           }).toList()..sort((a, b) {
@@ -339,7 +340,8 @@ DateTime _nextDue(Expense e, DateTime today) {
     return next;
   }
   if (e.dueDay != null) {
-    return DateTime(today.year, today.month, e.dueDay!);
+    final effectiveDay = e.effectiveDueDay(today.month, today.year);
+    return DateTime(today.year, today.month, effectiveDay);
   }
   return DateTime(today.year, today.month, today.day);
 }

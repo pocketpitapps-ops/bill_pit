@@ -9,7 +9,8 @@ enum _VisibleType { fixed, periodic, unique }
 
 class ExpenseFormPage extends StatefulWidget {
   final Expense? expense;
-  const ExpenseFormPage({super.key, this.expense});
+  final int? initialDueDay;
+  const ExpenseFormPage({super.key, this.expense, this.initialDueDay});
 
   @override
   State<ExpenseFormPage> createState() => _ExpenseFormPageState();
@@ -20,6 +21,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   late TextEditingController _nameCtrl;
   late TextEditingController _amountCtrl;
   late TextEditingController _dueDayCtrl;
+  late TextEditingController _installmentsCtrl;
   late _VisibleType _visibleType;
   late bool _isVariable;
   late String _category;
@@ -47,6 +49,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     _nameCtrl = TextEditingController(text: e?.name ?? '');
     _amountCtrl = TextEditingController(text: e != null ? e.amount.toStringAsFixed(2) : '');
     _dueDayCtrl = TextEditingController(text: e?.dueDay?.toString() ?? '');
+    _installmentsCtrl = TextEditingController(text: e?.installments?.toString() ?? '');
     _category = e?.category ?? '';
     _isPaid = e?.isPaid ?? false;
     _startDate = e?.startDate;
@@ -66,6 +69,9 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       _visibleType = _VisibleType.fixed;
       _isVariable = false;
       _frequency = 1;
+      if (widget.initialDueDay != null) {
+        _dueDayCtrl.text = widget.initialDueDay.toString();
+      }
     }
   }
 
@@ -97,6 +103,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     _nameCtrl.dispose();
     _amountCtrl.dispose();
     _dueDayCtrl.dispose();
+    _installmentsCtrl.dispose();
     super.dispose();
   }
 
@@ -104,6 +111,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   bool get _showPeriodicFields => _visibleType == _VisibleType.periodic;
   bool get _showUniqueDate => _visibleType == _VisibleType.unique;
   bool get _showVariableToggle => _showDueDay || _showPeriodicFields;
+  bool get _showInstallments => _showPeriodicFields && !_isVariable && _frequency == 1;
 
   String get _typeDescription {
     switch (_visibleType) {
@@ -280,53 +288,86 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                   if (date != null) setState(() => _startDate = date);
                 },
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Row(
-                  children: [
-                    const Text('Data fim'),
-                    const SizedBox(width: 8),
-                    Text('(opcional)', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                  ],
+              if (_showInstallments) ...[
+                TextFormField(
+                  controller: _installmentsCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Prestações',
+                    hintText: 'Ex: 12',
+                    suffixText: 'prestações',
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    final n = int.tryParse(v);
+                    if (n == null || n < 1) return 'Mínimo 1';
+                    return null;
+                  },
                 ),
-                subtitle: Text(
-                  _endDate != null
-                      ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                      : 'Sem data fim — recorrente para sempre',
-                  style: TextStyle(
-                    color: _endDate != null ? null : Colors.grey.shade500,
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    'Número de prestações. Se não preencher, recorre para sempre.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_endDate != null)
-                      IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () => setState(() => _endDate = null),
-                      ),
-                    const Icon(Icons.calendar_today),
-                  ],
+              ] else ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Row(
+                    children: [
+                      const Text('Data fim'),
+                      const SizedBox(width: 8),
+                      Text('(opcional)', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                    ],
+                  ),
+                  subtitle: Text(
+                    _endDate != null
+                        ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                        : 'Sem data fim — recorrente para sempre',
+                    style: TextStyle(
+                      color: _endDate != null ? null : Colors.grey.shade500,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_endDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () => setState(() => _endDate = null),
+                        ),
+                      const Icon(Icons.calendar_today),
+                    ],
+                  ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: _endDate ?? _startDate ?? DateTime.now(),
+                      firstDate: _startDate ?? DateTime(2020),
+                      lastDate: DateTime(2030),
+                    );
+                    if (date != null) setState(() => _endDate = date);
+                  },
                 ),
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _endDate ?? _startDate ?? DateTime.now(),
-                    firstDate: _startDate ?? DateTime(2020),
-                    lastDate: DateTime(2030),
-                  );
-                  if (date != null) setState(() => _endDate = date);
-                },
-              ),
+              ],
               if (_startDate != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: _PeriodicPreview(
-                    amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
-                    startDate: _startDate!,
-                    endDate: _endDate,
-                    frequency: _frequency,
-                  ),
+                  child: _showInstallments
+                      ? _PeriodicPreview(
+                          amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
+                          startDate: _startDate!,
+                          installments: int.tryParse(_installmentsCtrl.text),
+                          frequency: _frequency,
+                        )
+                      : _PeriodicPreview(
+                          amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
+                          startDate: _startDate!,
+                          endDate: _endDate,
+                          frequency: _frequency,
+                        ),
                 ),
             ],
             if (_showUniqueDate) ...[
@@ -393,9 +434,13 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     final repo = context.read<ExpenseRepository>();
     final amount = double.parse(_amountCtrl.text.replaceAll(',', '.'));
     final dueDay = int.tryParse(_dueDayCtrl.text);
+    final installments = int.tryParse(_installmentsCtrl.text);
     final freqValue = _showPeriodicFields
         ? (_isVariable ? -_frequency : _frequency)
         : (_isVariable ? 1 : 0);
+
+    final useInstallments = _showInstallments;
+    final useEndDate = _showPeriodicFields && !useInstallments;
 
     int savedId;
     if (_isEditing) {
@@ -406,7 +451,8 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..category = _category
         ..dueDay = _showDueDay ? dueDay : null
         ..startDate = _startDate
-        ..endDate = _endDate
+        ..endDate = useEndDate ? _endDate : null
+        ..installments = useInstallments ? installments : null
         ..notifyDaysBefore = freqValue
         ..isPaid = _isPaid;
       await repo.update(e);
@@ -419,7 +465,8 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..category = _category
         ..dueDay = _showDueDay ? dueDay : null
         ..startDate = _startDate
-        ..endDate = _endDate
+        ..endDate = useEndDate ? _endDate : null
+        ..installments = useInstallments ? installments : null
         ..notifyDaysBefore = freqValue
         ..isPaid = false
         ..isActive = true;
@@ -511,6 +558,7 @@ class _CategoryDropdown extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => _InlineCategoryForm(
+        categoryService: context.read<CategoryService>(),
         onCreated: (name) {
           onChanged(name);
         },
@@ -520,8 +568,9 @@ class _CategoryDropdown extends StatelessWidget {
 }
 
 class _InlineCategoryForm extends StatefulWidget {
+  final CategoryService categoryService;
   final ValueChanged<String> onCreated;
-  const _InlineCategoryForm({required this.onCreated});
+  const _InlineCategoryForm({required this.categoryService, required this.onCreated});
 
   @override
   State<_InlineCategoryForm> createState() => _InlineCategoryFormState();
@@ -532,24 +581,42 @@ class _InlineCategoryFormState extends State<_InlineCategoryForm> {
   IconData _selectedIcon = Icons.category_outlined;
   Color _selectedColor = const Color(0xFF6366F1);
 
-  static const _availableIcons = <IconData>[
-    Icons.home_outlined, Icons.directions_car_outlined, Icons.bolt_outlined,
-    Icons.favorite_outline, Icons.school_outlined, Icons.restaurant_outlined,
-    Icons.sports_esports_outlined, Icons.shopping_bag_outlined, Icons.pets_outlined,
-    Icons.flight_outlined, Icons.phone_outlined, Icons.wifi_outlined,
-    Icons.local_laundry_service_outlined, Icons.build_outlined, Icons.local_cafe_outlined,
-    Icons.movie_outlined, Icons.music_note_outlined, Icons.fitness_center_outlined,
-    Icons.local_grocery_store_outlined, Icons.account_balance_wallet_outlined,
-    Icons.card_giftcard_outlined, Icons.work_outline, Icons.child_care_outlined,
-    Icons.park_outlined, Icons.more_horiz,
+  static const _allIcons = <IconData>[
+    Icons.home_outlined, Icons.directions_car_outlined, Icons.build_outlined,
+    Icons.credit_card_outlined, Icons.favorite_outline, Icons.school_outlined,
+    Icons.restaurant_outlined, Icons.sports_esports_outlined, Icons.shopping_bag_outlined,
+    Icons.pets_outlined, Icons.flight_outlined, Icons.phone_outlined,
+    Icons.wifi_outlined, Icons.local_laundry_service_outlined, Icons.bolt_outlined,
+    Icons.local_cafe_outlined, Icons.movie_outlined, Icons.music_note_outlined,
+    Icons.fitness_center_outlined, Icons.local_grocery_store_outlined,
+    Icons.account_balance_wallet_outlined, Icons.card_giftcard_outlined,
+    Icons.work_outline, Icons.child_care_outlined, Icons.park_outlined,
+    Icons.more_horiz,
   ];
 
-  static const _availableColors = <Color>[
-    Color(0xFF6366F1), Color(0xFF3B82F6), Color(0xFFF59E0B),
-    Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFF10B981),
-    Color(0xFFEC4899), Color(0xFF64748B), Color(0xFF14B8A6),
+  static const _allColors = <Color>[
+    Color(0xFF3B82F6), Color(0xFF14B8A6), Color(0xFFF59E0B),
+    Color(0xFFEF4444), Color(0xFF10B981), Color(0xFF8B5CF6),
+    Color(0xFFEC4899), Color(0xFF64748B), Color(0xFF6366F1),
     Color(0xFFF97316), Color(0xFF84CC16), Color(0xFFE11D48),
   ];
+
+  List<IconData> get _availableIcons {
+    final used = widget.categoryService.usedIconCodePoints;
+    return _allIcons.where((i) => !used.contains(i.codePoint)).toList();
+  }
+
+  List<Color> get _availableColors {
+    final used = widget.categoryService.usedColorValues;
+    return _allColors.where((c) => !used.contains(c.toARGB32())).toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_availableIcons.isNotEmpty) _selectedIcon = _availableIcons.first;
+    if (_availableColors.isNotEmpty) _selectedColor = _availableColors.first;
+  }
 
   @override
   void dispose() {
@@ -559,6 +626,9 @@ class _InlineCategoryFormState extends State<_InlineCategoryForm> {
 
   @override
   Widget build(BuildContext context) {
+    final icons = _availableIcons;
+    final colors = _availableColors;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
@@ -580,59 +650,63 @@ class _InlineCategoryFormState extends State<_InlineCategoryForm> {
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 16),
-          Text('Ícone', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _availableIcons.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 4),
-              itemBuilder: (_, i) {
-                final icon = _availableIcons[i];
-                final selected = icon.codePoint == _selectedIcon.codePoint;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedIcon = icon),
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: selected ? _selectedColor.withValues(alpha: 0.2) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: selected ? Border.all(color: _selectedColor, width: 2) : null,
+          if (icons.isNotEmpty) ...[
+            Text('Ícone', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: icons.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 4),
+                itemBuilder: (_, i) {
+                  final icon = icons[i];
+                  final selected = icon.codePoint == _selectedIcon.codePoint;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedIcon = icon),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: selected ? _selectedColor.withValues(alpha: 0.2) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: selected ? Border.all(color: _selectedColor, width: 2) : null,
+                      ),
+                      child: Icon(icon, color: selected ? _selectedColor : Colors.grey, size: 20),
                     ),
-                    child: Icon(icon, color: selected ? _selectedColor : Colors.grey, size: 20),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 16),
-          Text('Cor', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _availableColors.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final color = _availableColors[i];
-                final selected = color.toARGB32() == _selectedColor.toARGB32();
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: selected ? Border.all(color: Colors.black, width: 3) : null,
+          if (colors.isNotEmpty) ...[
+            Text('Cor', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: colors.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final color = colors[i];
+                  final selected = color.toARGB32() == _selectedColor.toARGB32();
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedColor = color),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: selected ? Border.all(color: Colors.black, width: 3) : null,
+                      ),
+                      child: selected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
                     ),
-                    child: selected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -642,6 +716,12 @@ class _InlineCategoryFormState extends State<_InlineCategoryForm> {
                 if (name.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Nome é obrigatório.')),
+                  );
+                  return;
+                }
+                if (widget.categoryService.nameExists(name)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Já existe uma categoria com esse nome.')),
                   );
                   return;
                 }
@@ -662,6 +742,7 @@ class _InlineCategoryFormState extends State<_InlineCategoryForm> {
 class _PeriodicPreview extends StatelessWidget {
   final double amount;
   final DateTime startDate;
+  final int? installments;
   final DateTime? endDate;
   final int frequency;
 
@@ -676,6 +757,7 @@ class _PeriodicPreview extends StatelessWidget {
   const _PeriodicPreview({
     required this.amount,
     required this.startDate,
+    this.installments,
     this.endDate,
     required this.frequency,
   });
@@ -684,12 +766,40 @@ class _PeriodicPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final freqLabel = _frequencyLabels[frequency] ?? 'A cada $frequency meses';
 
-    if (endDate != null) {
+    if (installments != null && installments! > 0) {
+      final total = amount * installments!;
+      return Card(
+        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Icon(Icons.calculate_outlined, color: Theme.of(context).colorScheme.primary, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$installments × ${amount.toStringAsFixed(2)}€ ($freqLabel)',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      'Total: ${total.toStringAsFixed(2)}€',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else if (endDate != null) {
       final totalMonths = (endDate!.year - startDate.year) * 12 + (endDate!.month - startDate.month) + 1;
       final intervals = (totalMonths / frequency).ceil();
       if (intervals <= 0) return const SizedBox();
       final total = amount * intervals;
-
       return Card(
         color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
         child: Padding(

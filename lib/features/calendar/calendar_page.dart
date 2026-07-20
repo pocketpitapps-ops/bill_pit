@@ -25,6 +25,19 @@ class _CalendarPageState extends State<CalendarPage> {
   void _prevMonth() => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1));
   void _nextMonth() => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1));
 
+  Color _dayColor(List<Expense> dayExpenses, int month, int year) {
+    if (dayExpenses.isEmpty) return Colors.transparent;
+    final key = Expense.monthKey(month, year);
+    final now = DateTime.now();
+    final allPaid = dayExpenses.every((e) => e.paidMonths.contains(key));
+    final effectiveDay = dayExpenses.first.effectiveDueDay(month, year);
+    final isPast = DateTime(year, month, effectiveDay).isBefore(DateTime(now.year, now.month, now.day));
+
+    if (allPaid) return Colors.green;
+    if (isPast) return Colors.red;
+    return Colors.orange;
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = context.watch<ExpenseRepository>();
@@ -73,7 +86,8 @@ class _CalendarPageState extends State<CalendarPage> {
                 final byDay = <int, List<Expense>>{};
                 for (final e in expenses) {
                   if (e.dueDay != null) {
-                    byDay.putIfAbsent(e.dueDay!, () => []).add(e);
+                    final effectiveDay = e.effectiveDueDay(month, year);
+                    byDay.putIfAbsent(effectiveDay, () => []).add(e);
                   }
                 }
 
@@ -93,21 +107,27 @@ class _CalendarPageState extends State<CalendarPage> {
                         month == DateTime.now().month &&
                         year == DateTime.now().year;
                     final total = dayExpenses.fold<double>(0, (s, e) => s + e.amount);
+                    final color = _dayColor(dayExpenses, month, year);
 
                     return GestureDetector(
-                      onTap: dayExpenses.isNotEmpty ? () => _showDayExpenses(context, day, dayExpenses) : null,
+                      onTap: () => _showDayExpenses(context, day, dayExpenses, month, year),
                       child: Container(
                         margin: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
                           color: isToday
                               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
                               : dayExpenses.isNotEmpty
-                                  ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
+                                  ? color.withValues(alpha: 0.15)
                                   : null,
                           borderRadius: BorderRadius.circular(10),
-                          border: isToday
-                              ? Border.all(color: Theme.of(context).colorScheme.primary, width: 1.5)
-                              : null,
+                          border: Border.all(
+                            color: isToday
+                                ? Theme.of(context).colorScheme.primary
+                                : dayExpenses.isNotEmpty
+                                    ? color
+                                    : Colors.transparent,
+                            width: dayExpenses.isNotEmpty || isToday ? 1.5 : 0,
+                          ),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -124,11 +144,7 @@ class _CalendarPageState extends State<CalendarPage> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: dayExpenses.every((e) => e.isPaid)
-                                      ? Colors.green
-                                      : dayExpenses.any((e) => e.isPaid)
-                                          ? Colors.orange
-                                          : Colors.red,
+                                  color: color,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -151,8 +167,9 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  void _showDayExpenses(BuildContext context, int day, List<Expense> expenses) {
+  void _showDayExpenses(BuildContext context, int day, List<Expense> expenses, int month, int year) {
     final catService = context.read<CategoryService>();
+    final monthKey = Expense.monthKey(month, year);
 
     showModalBottomSheet(
       context: context,
@@ -161,8 +178,8 @@ class _CalendarPageState extends State<CalendarPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
+        initialChildSize: expenses.isEmpty ? 0.3 : 0.5,
+        minChildSize: 0.2,
         maxChildSize: 0.8,
         expand: false,
         builder: (ctx, scrollCtrl) => ListView(
@@ -180,35 +197,65 @@ class _CalendarPageState extends State<CalendarPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Dia $day',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Dia $day',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ExpenseFormPage(initialDueDay: day),
+                      ),
+                    );
+                    if (result == true) setState(() {});
+                  },
+                  icon: const Icon(Icons.add_circle_outline),
+                  tooltip: 'Nova despesa',
+                ),
+              ],
             ),
             const SizedBox(height: 12),
-            ...expenses.map((e) {
-              final catData = catService.findByName(e.category);
-              return Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
-                    child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
+            if (expenses.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: Text('Sem despesas neste dia.')),
+              )
+            else
+              ...expenses.map((e) {
+                final catData = catService.findByName(e.category);
+                final paid = e.paidMonths.contains(monthKey);
+                final effectiveDay = e.effectiveDueDay(month, year);
+                final isPast = DateTime(year, month, effectiveDay).isBefore(DateTime.now());
+                final color = paid ? Colors.green : (isPast ? Colors.red : Colors.orange);
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
+                      child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
+                    ),
+                    title: Text(e.name),
+                    subtitle: Text('${e.amount.toStringAsFixed(2)}€ · ${expenseTypeLabels[e.type]}'),
+                    trailing: Icon(
+                      paid ? Icons.check_circle : Icons.radio_button_unchecked,
+                      color: color,
+                    ),
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ExpenseFormPage(expense: e)),
+                      );
+                      if (result == true) setState(() {});
+                    },
                   ),
-                  title: Text(e.name),
-                  subtitle: Text('${e.amount.toStringAsFixed(2)}€ · ${expenseTypeLabels[e.type]}'),
-                  trailing: Icon(
-                    e.isPaid ? Icons.check_circle : Icons.radio_button_unchecked,
-                    color: e.isPaid ? Colors.green : Colors.red,
-                  ),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ExpenseFormPage(expense: e)),
-                    );
-                  },
-                ),
-              );
-            }),
+                );
+              }),
           ],
         ),
       ),
