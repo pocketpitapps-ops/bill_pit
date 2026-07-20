@@ -63,9 +63,11 @@ class _DashboardTab extends StatelessWidget {
     final repo = context.watch<ExpenseRepository>();
     final catService = context.watch<CategoryService>();
 
+    final now = DateTime.now();
+
     return SafeArea(
       child: FutureBuilder<List<Expense>>(
-        future: repo.getAll(),
+        future: repo.getByMonth(now.month, now.year),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
@@ -76,9 +78,10 @@ class _DashboardTab extends StatelessWidget {
           }
 
           final grandTotal = expenses.fold<double>(0, (s, e) => s + e.amount);
-          final paidTotal = expenses.where((e) => e.isPaid).fold<double>(0, (s, e) => s + e.amount);
+          final monthKey = Expense.monthKey(now.month, now.year);
+          final paidTotal = expenses.where((e) => e.paidMonths.contains(monthKey)).fold<double>(0, (s, e) => s + e.amount);
           final unpaidTotal = grandTotal - paidTotal;
-          final paidCount = expenses.where((e) => e.isPaid).length;
+          final paidCount = expenses.where((e) => e.paidMonths.contains(monthKey)).length;
 
           final byCategory = <String, double>{};
           for (final e in expenses) {
@@ -87,7 +90,6 @@ class _DashboardTab extends StatelessWidget {
           final sortedCats = byCategory.entries.toList()
             ..sort((a, b) => b.value.compareTo(a.value));
 
-          final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
           final upcoming = expenses.where((e) {
             if (e.isPaid) return false;

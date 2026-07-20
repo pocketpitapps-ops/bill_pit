@@ -412,21 +412,41 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, CategoryService catService) {
+  void _confirmDelete(BuildContext context, CategoryService catService) async {
+    final repo = context.read<ExpenseRepository>();
+    final count = await repo.countByCategory(cat.name);
+
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar categoria?'),
-        content: Text('Eliminar "${cat.name}"?'),
+        content: Text(
+          count > 0
+              ? 'Eliminar "${cat.name}"?\n\n$count despesa(s) serão movidas para "Outros".'
+              : 'Eliminar "${cat.name}"?',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
             onPressed: () async {
+              if (count > 0) {
+                await repo.moveCategory(cat.name, 'Outros');
+              }
               final deleted = await catService.delete(cat.name);
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(deleted ? '${cat.name} eliminada.' : 'Não foi possível eliminar.')),
+                  SnackBar(
+                    content: Text(
+                      deleted
+                          ? count > 0
+                              ? '${cat.name} eliminada. $count despesa(s) movida(s) para Outros.'
+                              : '${cat.name} eliminada.'
+                          : 'Não foi possível eliminar.',
+                    ),
+                  ),
                 );
               }
             },
@@ -641,7 +661,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
     );
   }
 
-  void _save() {
+  void _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -659,17 +679,28 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
       return;
     }
 
+    final oldName = widget.existing?.name;
+
     if (_isEditing) {
-      catService.update(
-        widget.existing!.name,
+      await catService.update(
+        oldName!,
         name: name,
         icon: _selectedIcon,
         color: _selectedColor,
       );
+      if (oldName != name && context.mounted) {
+        final repo = context.read<ExpenseRepository>();
+        final moved = await repo.renameCategory(oldName, name);
+        if (context.mounted && moved > 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$moved despesa(s) atualizada(s) para "$name".')),
+          );
+        }
+      }
     } else {
-      catService.add(name, _selectedIcon, _selectedColor);
+      await catService.add(name, _selectedIcon, _selectedColor);
     }
 
-    Navigator.pop(context);
+    if (context.mounted) Navigator.pop(context);
   }
 }

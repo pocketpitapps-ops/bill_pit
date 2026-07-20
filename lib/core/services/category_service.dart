@@ -138,5 +138,6 @@ class CategoryService extends ChangeNotifier {
         AppCategory(name: 'Subscrições', iconCodePoint: 0xf3fb, colorValue: 0xFF8B5CF6, isDefault: true),
         AppCategory(name: 'Crédito', iconCodePoint: 0xef8f, colorValue: 0xFFEF4444, isDefault: true),
         AppCategory(name: 'Saúde', iconCodePoint: 0xe25c, colorValue: 0xFFEC4899, isDefault: true),
+        AppCategory(name: 'Outros', iconCodePoint: 0xe5d3, colorValue: 0xFF64748B, isDefault: true),
       ];
 }

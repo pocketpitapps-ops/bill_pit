@@ -85,10 +85,8 @@ class _CalendarPageState extends State<CalendarPage> {
                 final expenses = snapshot.data ?? [];
                 final byDay = <int, List<Expense>>{};
                 for (final e in expenses) {
-                  if (e.dueDay != null) {
-                    final effectiveDay = e.effectiveDueDay(month, year);
-                    byDay.putIfAbsent(effectiveDay, () => []).add(e);
-                  }
+                  final effectiveDay = e.effectiveDueDay(month, year);
+                  byDay.putIfAbsent(effectiveDay, () => []).add(e);
                 }
 
                 return GridView.builder(

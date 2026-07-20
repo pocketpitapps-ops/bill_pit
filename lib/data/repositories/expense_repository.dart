@@ -164,6 +164,53 @@ class ExpenseRepository {
     return map;
   }
 
+  // ── CATEGORY HELPERS ──
+
+  Future<int> renameCategory(String oldName, String newName) async {
+    final all = await _isar.expenses
+        .where()
+        .filter()
+        .isActiveEqualTo(true)
+        .categoryEqualTo(oldName)
+        .findAll();
+    if (all.isEmpty) return 0;
+    await _isar.writeTxn(() async {
+      for (final e in all) {
+        e.category = newName;
+        e.updatedAt = DateTime.now();
+        await _isar.expenses.put(e);
+      }
+    });
+    return all.length;
+  }
+
+  Future<int> moveCategory(String fromCategory, String toCategory) async {
+    final all = await _isar.expenses
+        .where()
+        .filter()
+        .isActiveEqualTo(true)
+        .categoryEqualTo(fromCategory)
+        .findAll();
+    if (all.isEmpty) return 0;
+    await _isar.writeTxn(() async {
+      for (final e in all) {
+        e.category = toCategory;
+        e.updatedAt = DateTime.now();
+        await _isar.expenses.put(e);
+      }
+    });
+    return all.length;
+  }
+
+  Future<int> countByCategory(String category) async {
+    return _isar.expenses
+        .where()
+        .filter()
+        .isActiveEqualTo(true)
+        .categoryEqualTo(category)
+        .count();
+  }
+
   // ── SEED ──
 
   Future<void> seedIfEmpty() async {
