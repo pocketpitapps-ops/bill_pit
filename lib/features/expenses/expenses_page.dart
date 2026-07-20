@@ -79,6 +79,8 @@ class _ExpensesPageState extends State<ExpensesPage> {
             }
             final sorted = [...unpaidFirst, ...paidLast];
             final unpaidTotal = unpaidFirst.fold<double>(0, (s, e) => s + e.amount);
+            final monthTotal = filtered.fold<double>(0, (s, e) => s + e.amount);
+            final paidTotal = monthTotal - unpaidTotal;
 
             final overdueExpenses = unpaidFirst.where((e) {
               final effectiveDay = e.effectiveDueDay(_selectedMonth.month, _selectedMonth.year);
@@ -102,12 +104,28 @@ class _ExpensesPageState extends State<ExpensesPage> {
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         if (allPaid)
-                          Text(
-                            'Liquidado',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Liquidado',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  '${paidTotal.toStringAsFixed(2)}€',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           )
                         else
                           Column(
@@ -118,6 +136,17 @@ class _ExpensesPageState extends State<ExpensesPage> {
                                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.amber.shade700,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  'Total: ${monthTotal.toStringAsFixed(2)}€',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade600,
+                                  ),
                                 ),
                               ),
                               if (hasOverdue)

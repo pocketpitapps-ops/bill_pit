@@ -51,14 +51,14 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     _amountCtrl = TextEditingController(text: e != null ? e.amount.toStringAsFixed(2) : '');
     _dueDayCtrl = TextEditingController(text: e?.dueDay?.toString() ?? '');
     _installmentsCtrl = TextEditingController(text: e?.installments?.toString() ?? '');
-    _category = e?.category ?? '';
-    _isPaid = e?.isPaid ?? false;
-    _amountConfirmed = e?.amountConfirmed ?? false;
-    _startDate = e?.startDate;
-    _endDate = e?.endDate;
 
     if (e != null) {
+      _category = e.category;
       _visibleType = _expenseTypeToVisible(e.type);
+      _isPaid = e.isPaid;
+      _amountConfirmed = e.amountConfirmed;
+      _startDate = e.startDate;
+      _endDate = e.endDate;
       if (e.type == ExpenseType.periodic) {
         final raw = e.notifyDaysBefore;
         _frequency = raw.abs() > 0 ? raw.abs() : 1;
@@ -68,8 +68,11 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         _frequency = 1;
       }
     } else {
+      _category = '';
       _visibleType = _VisibleType.fixed;
       _isVariable = false;
+      _isPaid = false;
+      _amountConfirmed = false;
       _frequency = 1;
       if (widget.initialDueDay != null) {
         _dueDayCtrl.text = widget.initialDueDay.toString();
@@ -134,10 +137,9 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   Widget build(BuildContext context) {
     final catService = context.watch<CategoryService>();
     final allCategories = catService.categories;
-    final defaultCatName = allCategories.isNotEmpty ? allCategories.first.name : '';
 
-    if (!_isEditing) {
-      _category = defaultCatName;
+    if (_category.isEmpty && allCategories.isNotEmpty) {
+      _category = allCategories.first.name;
     }
 
     return Scaffold(

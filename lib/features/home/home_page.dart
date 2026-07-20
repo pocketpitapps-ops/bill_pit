@@ -91,8 +91,9 @@ class _DashboardTab extends StatelessWidget {
             ..sort((a, b) => b.value.compareTo(a.value));
 
           final today = DateTime(now.year, now.month, now.day);
+          final monthKey = Expense.monthKey(now.month, now.year);
           final upcoming = expenses.where((e) {
-            if (e.isPaid) return false;
+            if (e.paidMonths.contains(monthKey)) return false;
             if (e.type == ExpenseType.periodic && e.startDate != null) {
               final freq = e.notifyDaysBefore.abs() > 0 ? e.notifyDaysBefore.abs() : 1;
               final start = e.startDate!;

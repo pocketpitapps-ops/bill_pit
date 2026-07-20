@@ -79,6 +79,10 @@ class ExpenseRepository {
     switch (e.type) {
       case ExpenseType.fixed:
       case ExpenseType.monthly:
+        if (e.startDate != null) {
+          final startMonth = DateTime(e.startDate!.year, e.startDate!.month);
+          if (target.isBefore(startMonth)) return false;
+        }
         return true;
       case ExpenseType.periodic:
         if (e.startDate == null) return true;
