@@ -33,6 +33,8 @@ class Expense {
 
   late bool isActive;
 
+  late bool amountConfirmed;
+
   late DateTime createdAt;
 
   DateTime? updatedAt;

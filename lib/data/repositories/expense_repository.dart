@@ -175,8 +175,8 @@ class ExpenseRepository {
       _seedExpense('Luz', 'Electricidade', 45.0, ExpenseType.monthly, 5),
       _seedExpense('Água', 'Água', 30.0, ExpenseType.monthly, 10),
       _seedExpense('Gás', 'Gás', 25.0, ExpenseType.monthly, 12),
-      _seedExpense('Internet', 'Serviço', 35.0, ExpenseType.monthly, 15),
-      _seedExpense('Telemóvel', 'Serviço', 20.0, ExpenseType.monthly, 15),
+      _seedExpense('Internet', 'Subscrições', 35.0, ExpenseType.monthly, 15),
+      _seedExpense('Telemóvel', 'Subscrições', 20.0, ExpenseType.monthly, 15),
       _seedExpense('Seguro carro', 'Veículo', 85.0, ExpenseType.periodic, 1),
       _seedExpense('Combustível', 'Veículo', 120.0, ExpenseType.monthly, 20),
       _seedExpense('Ginásio', 'Saúde', 30.0, ExpenseType.monthly, 5),
@@ -200,6 +200,7 @@ class ExpenseRepository {
       ..type = type
       ..dueDay = dueDay
       ..isPaid = false
+      ..amountConfirmed = false
       ..notifyDaysBefore = 1
       ..isActive = true
       ..createdAt = DateTime.now();

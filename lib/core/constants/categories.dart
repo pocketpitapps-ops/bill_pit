@@ -21,14 +21,14 @@ class CategoryData {
 }
 
 const Map<ExpenseCategory, CategoryData> categories = {
-  ExpenseCategory.housing: CategoryData('Casa', Icons.home_outlined, Color(0xFF3B82F6)),
+  ExpenseCategory.housing: CategoryData('Casa', Icons.home_outlined, Color(0xFF22C55E)),
   ExpenseCategory.electricity: CategoryData('Electricidade', Icons.bolt_outlined, Color(0xFFF59E0B)),
-  ExpenseCategory.water: CategoryData('Água', Icons.water_outlined, Color(0xFF06B6D4)),
+  ExpenseCategory.water: CategoryData('Água', Icons.water_outlined, Color(0xFF3B82F6)),
   ExpenseCategory.gas: CategoryData('Gás', Icons.local_fire_department_outlined, Color(0xFFF97316)),
-  ExpenseCategory.vehicle: CategoryData('Veículo', Icons.directions_car_outlined, Color(0xFF14B8A6)),
-  ExpenseCategory.services: CategoryData('Serviço', Icons.subscriptions_outlined, Color(0xFF8B5CF6)),
+  ExpenseCategory.vehicle: CategoryData('Veículo', Icons.directions_car_outlined, Color(0xFFFFFFFF)),
+  ExpenseCategory.services: CategoryData('Subscrições', Icons.subscriptions_outlined, Color(0xFF8B5CF6)),
   ExpenseCategory.credit: CategoryData('Crédito', Icons.credit_card_outlined, Color(0xFFEF4444)),
-  ExpenseCategory.health: CategoryData('Saúde', Icons.favorite_outline, Color(0xFF10B981)),
+  ExpenseCategory.health: CategoryData('Saúde', Icons.favorite_outline, Color(0xFFEC4899)),
 };
 
 const Map<ExpenseType, String> expenseTypeLabels = {

@@ -18,58 +18,63 @@ const ExpenseSchema = CollectionSchema(
   id: -4604318666888508206,
   properties: {
     r'amount': PropertySchema(id: 0, name: r'amount', type: IsarType.double),
-    r'category': PropertySchema(
+    r'amountConfirmed': PropertySchema(
       id: 1,
+      name: r'amountConfirmed',
+      type: IsarType.bool,
+    ),
+    r'category': PropertySchema(
+      id: 2,
       name: r'category',
       type: IsarType.string,
     ),
     r'createdAt': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'createdAt',
       type: IsarType.dateTime,
     ),
-    r'dueDay': PropertySchema(id: 3, name: r'dueDay', type: IsarType.long),
+    r'dueDay': PropertySchema(id: 4, name: r'dueDay', type: IsarType.long),
     r'endDate': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'endDate',
       type: IsarType.dateTime,
     ),
     r'installments': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'installments',
       type: IsarType.long,
     ),
-    r'isActive': PropertySchema(id: 6, name: r'isActive', type: IsarType.bool),
-    r'isPaid': PropertySchema(id: 7, name: r'isPaid', type: IsarType.bool),
-    r'name': PropertySchema(id: 8, name: r'name', type: IsarType.string),
+    r'isActive': PropertySchema(id: 7, name: r'isActive', type: IsarType.bool),
+    r'isPaid': PropertySchema(id: 8, name: r'isPaid', type: IsarType.bool),
+    r'name': PropertySchema(id: 9, name: r'name', type: IsarType.string),
     r'notifyDaysBefore': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'notifyDaysBefore',
       type: IsarType.long,
     ),
     r'paidDate': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'paidDate',
       type: IsarType.dateTime,
     ),
     r'paidMonths': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'paidMonths',
       type: IsarType.longList,
     ),
     r'startDate': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'type': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'type',
       type: IsarType.byte,
       enumMap: _ExpensetypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -109,20 +114,21 @@ void _expenseSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeDouble(offsets[0], object.amount);
-  writer.writeString(offsets[1], object.category);
-  writer.writeDateTime(offsets[2], object.createdAt);
-  writer.writeLong(offsets[3], object.dueDay);
-  writer.writeDateTime(offsets[4], object.endDate);
-  writer.writeLong(offsets[5], object.installments);
-  writer.writeBool(offsets[6], object.isActive);
-  writer.writeBool(offsets[7], object.isPaid);
-  writer.writeString(offsets[8], object.name);
-  writer.writeLong(offsets[9], object.notifyDaysBefore);
-  writer.writeDateTime(offsets[10], object.paidDate);
-  writer.writeLongList(offsets[11], object.paidMonths);
-  writer.writeDateTime(offsets[12], object.startDate);
-  writer.writeByte(offsets[13], object.type.index);
-  writer.writeDateTime(offsets[14], object.updatedAt);
+  writer.writeBool(offsets[1], object.amountConfirmed);
+  writer.writeString(offsets[2], object.category);
+  writer.writeDateTime(offsets[3], object.createdAt);
+  writer.writeLong(offsets[4], object.dueDay);
+  writer.writeDateTime(offsets[5], object.endDate);
+  writer.writeLong(offsets[6], object.installments);
+  writer.writeBool(offsets[7], object.isActive);
+  writer.writeBool(offsets[8], object.isPaid);
+  writer.writeString(offsets[9], object.name);
+  writer.writeLong(offsets[10], object.notifyDaysBefore);
+  writer.writeDateTime(offsets[11], object.paidDate);
+  writer.writeLongList(offsets[12], object.paidMonths);
+  writer.writeDateTime(offsets[13], object.startDate);
+  writer.writeByte(offsets[14], object.type.index);
+  writer.writeDateTime(offsets[15], object.updatedAt);
 }
 
 Expense _expenseDeserialize(
@@ -133,23 +139,24 @@ Expense _expenseDeserialize(
 ) {
   final object = Expense();
   object.amount = reader.readDouble(offsets[0]);
-  object.category = reader.readString(offsets[1]);
-  object.createdAt = reader.readDateTime(offsets[2]);
-  object.dueDay = reader.readLongOrNull(offsets[3]);
-  object.endDate = reader.readDateTimeOrNull(offsets[4]);
+  object.amountConfirmed = reader.readBool(offsets[1]);
+  object.category = reader.readString(offsets[2]);
+  object.createdAt = reader.readDateTime(offsets[3]);
+  object.dueDay = reader.readLongOrNull(offsets[4]);
+  object.endDate = reader.readDateTimeOrNull(offsets[5]);
   object.id = id;
-  object.installments = reader.readLongOrNull(offsets[5]);
-  object.isActive = reader.readBool(offsets[6]);
-  object.isPaid = reader.readBool(offsets[7]);
-  object.name = reader.readString(offsets[8]);
-  object.notifyDaysBefore = reader.readLong(offsets[9]);
-  object.paidDate = reader.readDateTimeOrNull(offsets[10]);
-  object.paidMonths = reader.readLongList(offsets[11]) ?? [];
-  object.startDate = reader.readDateTimeOrNull(offsets[12]);
+  object.installments = reader.readLongOrNull(offsets[6]);
+  object.isActive = reader.readBool(offsets[7]);
+  object.isPaid = reader.readBool(offsets[8]);
+  object.name = reader.readString(offsets[9]);
+  object.notifyDaysBefore = reader.readLong(offsets[10]);
+  object.paidDate = reader.readDateTimeOrNull(offsets[11]);
+  object.paidMonths = reader.readLongList(offsets[12]) ?? [];
+  object.startDate = reader.readDateTimeOrNull(offsets[13]);
   object.type =
-      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[13])] ??
+      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[14])] ??
       ExpenseType.fixed;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[14]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[15]);
   return object;
 }
 
@@ -163,34 +170,36 @@ P _expenseDeserializeProp<P>(
     case 0:
       return (reader.readDouble(offset)) as P;
     case 1:
-      return (reader.readString(offset)) as P;
-    case 2:
-      return (reader.readDateTime(offset)) as P;
-    case 3:
-      return (reader.readLongOrNull(offset)) as P;
-    case 4:
-      return (reader.readDateTimeOrNull(offset)) as P;
-    case 5:
-      return (reader.readLongOrNull(offset)) as P;
-    case 6:
       return (reader.readBool(offset)) as P;
+    case 2:
+      return (reader.readString(offset)) as P;
+    case 3:
+      return (reader.readDateTime(offset)) as P;
+    case 4:
+      return (reader.readLongOrNull(offset)) as P;
+    case 5:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 6:
+      return (reader.readLongOrNull(offset)) as P;
     case 7:
       return (reader.readBool(offset)) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readLong(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 10:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 11:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 12:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 12:
+      return (reader.readLongList(offset) ?? []) as P;
     case 13:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 14:
       return (_ExpensetypeValueEnumMap[reader.readByteOrNull(offset)] ??
               ExpenseType.fixed)
           as P;
-    case 14:
+    case 15:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -372,6 +381,16 @@ extension ExpenseQueryFilter
 
           epsilon: epsilon,
         ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> amountConfirmedEqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'amountConfirmed', value: value),
       );
     });
   }
@@ -1495,6 +1514,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByAmountConfirmed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'amountConfirmed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByAmountConfirmedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'amountConfirmed', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByCategory() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'category', Sort.asc);
@@ -1663,6 +1694,18 @@ extension ExpenseQuerySortThenBy
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByAmountDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'amount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByAmountConfirmed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'amountConfirmed', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByAmountConfirmedDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'amountConfirmed', Sort.desc);
     });
   }
 
@@ -1843,6 +1886,12 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Expense, Expense, QDistinct> distinctByAmountConfirmed() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'amountConfirmed');
+    });
+  }
+
   QueryBuilder<Expense, Expense, QDistinct> distinctByCategory({
     bool caseSensitive = true,
   }) {
@@ -1943,6 +1992,12 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, double, QQueryOperations> amountProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'amount');
+    });
+  }
+
+  QueryBuilder<Expense, bool, QQueryOperations> amountConfirmedProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'amountConfirmed');
     });
   }
 

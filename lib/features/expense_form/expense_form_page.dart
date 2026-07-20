@@ -26,6 +26,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   late bool _isVariable;
   late String _category;
   late bool _isPaid;
+  late bool _amountConfirmed;
   late int _frequency;
 
   DateTime? _startDate;
@@ -52,6 +53,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     _installmentsCtrl = TextEditingController(text: e?.installments?.toString() ?? '');
     _category = e?.category ?? '';
     _isPaid = e?.isPaid ?? false;
+    _amountConfirmed = e?.amountConfirmed ?? false;
     _startDate = e?.startDate;
     _endDate = e?.endDate;
 
@@ -404,6 +406,18 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                 activeThumbColor: Theme.of(context).colorScheme.primary,
                 contentPadding: EdgeInsets.zero,
               ),
+            if (_isEditing && _isVariable)
+              CheckboxListTile(
+                title: const Text('Valor atualizado'),
+                subtitle: Text(
+                  'Marca se o valor reflete o valor real da factura.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                value: _amountConfirmed,
+                onChanged: (v) => setState(() => _amountConfirmed = v ?? false),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: _save,
@@ -454,7 +468,8 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..endDate = useEndDate ? _endDate : null
         ..installments = useInstallments ? installments : null
         ..notifyDaysBefore = freqValue
-        ..isPaid = _isPaid;
+        ..isPaid = _isPaid
+        ..amountConfirmed = _amountConfirmed;
       await repo.update(e);
       savedId = e.id;
     } else {
@@ -469,6 +484,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..installments = useInstallments ? installments : null
         ..notifyDaysBefore = freqValue
         ..isPaid = false
+        ..amountConfirmed = false
         ..isActive = true;
       savedId = await repo.create(e);
     }

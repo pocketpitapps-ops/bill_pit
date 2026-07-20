@@ -273,7 +273,7 @@ class _ExpenseTile extends StatelessWidget {
             Expanded(
               child: Text(expense.name, style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
-            if (_isVariable && !paid)
+            if (_isVariable && !paid && !expense.amountConfirmed)
               Padding(
                 padding: const EdgeInsets.only(left: 6),
                 child: Icon(Icons.edit_note, size: 18, color: Colors.amber.shade700),
