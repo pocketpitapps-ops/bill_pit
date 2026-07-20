@@ -688,10 +688,10 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
         icon: _selectedIcon,
         color: _selectedColor,
       );
-      if (oldName != name && context.mounted) {
+      if (oldName != name) {
         final repo = context.read<ExpenseRepository>();
         final moved = await repo.renameCategory(oldName, name);
-        if (context.mounted && moved > 0) {
+        if (mounted && moved > 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('$moved despesa(s) atualizada(s) para "$name".')),
           );
@@ -701,6 +701,6 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
       await catService.add(name, _selectedIcon, _selectedColor);
     }
 
-    if (context.mounted) Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
   }
 }
