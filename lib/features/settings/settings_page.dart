@@ -4,6 +4,7 @@ import '../../core/services/category_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
+import '../home/home_page.dart';
 import '../legal/privacy_policy_page.dart';
 import '../legal/terms_of_service_page.dart';
 
@@ -175,6 +176,10 @@ class SettingsPage extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Dados eliminados.')),
                 );
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const HomePage()),
+                  (_) => false,
+                );
               }
             },
             child: const Text('Limpar', style: TextStyle(color: Colors.red)),
@@ -206,6 +211,10 @@ class SettingsPage extends StatelessWidget {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Dados repostos.')),
+                );
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const HomePage()),
+                  (_) => false,
                 );
               }
             },
@@ -456,10 +465,14 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
   late Color _selectedColor;
   bool get _isEditing => widget.existing != null;
 
-  static const _availableIcons = <IconData>[
+  static const _allIcons = <IconData>[
     Icons.home_outlined,
     Icons.directions_car_outlined,
     Icons.bolt_outlined,
+    Icons.water_outlined,
+    Icons.local_fire_department_outlined,
+    Icons.subscriptions_outlined,
+    Icons.credit_card_outlined,
     Icons.favorite_outline,
     Icons.school_outlined,
     Icons.restaurant_outlined,
@@ -481,22 +494,45 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
     Icons.work_outline,
     Icons.child_care_outlined,
     Icons.park_outlined,
+    Icons.train_outlined,
+    Icons.bus_alert_outlined,
+    Icons.pedal_bike_outlined,
+    Icons.local_hospital_outlined,
+    Icons.cake_outlined,
+    Icons.camera_alt_outlined,
+    Icons.inventory_2_outlined,
+    Icons.savings_outlined,
+    Icons.account_balance_outlined,
     Icons.more_horiz,
   ];
 
-  static const _availableColors = <Color>[
-    Color(0xFF6366F1), Color(0xFF3B82F6), Color(0xFFF59E0B),
-    Color(0xFFEF4444), Color(0xFF8B5CF6), Color(0xFF10B981),
-    Color(0xFFEC4899), Color(0xFF64748B), Color(0xFF14B8A6),
-    Color(0xFFF97316), Color(0xFF84CC16), Color(0xFFE11D48),
+  static const _allColors = <Color>[
+    Color(0xFF3B82F6), Color(0xFF06B6D4), Color(0xFFF59E0B),
+    Color(0xFFF97316), Color(0xFFEF4444), Color(0xFF10B981),
+    Color(0xFF14B8A6), Color(0xFF8B5CF6), Color(0xFFEC4899),
+    Color(0xFF6366F1), Color(0xFF64748B), Color(0xFF84CC16),
+    Color(0xFFE11D48), Color(0xFF0EA5E9), Color(0xFFD946EF),
+    Color(0xFF78716C),
   ];
+
+  List<IconData> get _availableIcons {
+    if (_isEditing) return _allIcons;
+    final used = context.read<CategoryService>().usedIconCodePoints;
+    return _allIcons.where((i) => !used.contains(i.codePoint)).toList();
+  }
+
+  List<Color> get _availableColors {
+    if (_isEditing) return _allColors;
+    final used = context.read<CategoryService>().usedColorValues;
+    return _allColors.where((c) => !used.contains(c.toARGB32())).toList();
+  }
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?.name ?? '');
     _selectedIcon = widget.existing?.icon ?? Icons.category_outlined;
-    _selectedColor = widget.existing?.color ?? _availableColors.first;
+    _selectedColor = widget.existing?.color ?? _allColors.first;
   }
 
   @override
@@ -507,6 +543,9 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final icons = _availableIcons;
+    final colors = _availableColors;
+
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Column(
@@ -531,61 +570,63 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
             textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 16),
-          Text('Ícone', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _availableIcons.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 4),
-              itemBuilder: (_, i) {
-                final icon = _availableIcons[i];
-                final selected = icon.codePoint == _selectedIcon.codePoint;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedIcon = icon),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: selected ? _selectedColor.withValues(alpha: 0.2) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(10),
-                      border: selected ? Border.all(color: _selectedColor, width: 2) : null,
+          if (icons.isNotEmpty) ...[
+            Text('Ícone', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: icons.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 4),
+                itemBuilder: (_, i) {
+                  final icon = icons[i];
+                  final selected = icon.codePoint == _selectedIcon.codePoint;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedIcon = icon),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: selected ? _selectedColor.withValues(alpha: 0.2) : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(10),
+                        border: selected ? Border.all(color: _selectedColor, width: 2) : null,
+                      ),
+                      child: Icon(icon, color: selected ? _selectedColor : Colors.grey, size: 20),
                     ),
-                    child: Icon(icon, color: selected ? _selectedColor : Colors.grey, size: 20),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 16),
-          Text('Cor', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 44,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _availableColors.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final color = _availableColors[i];
-                final selected = color.toARGB32() == _selectedColor.toARGB32();
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedColor = color),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: selected ? Border.all(color: Colors.black, width: 3) : null,
+          if (colors.isNotEmpty) ...[
+            Text('Cor', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 44,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: colors.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (_, i) {
+                  final color = colors[i];
+                  final selected = color.toARGB32() == _selectedColor.toARGB32();
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedColor = color),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: selected ? Border.all(color: Colors.black, width: 3) : null,
+                      ),
+                      child: selected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
                     ),
-                    child: selected ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -610,6 +651,13 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
     }
 
     final catService = context.read<CategoryService>();
+
+    if (!_isEditing && catService.nameExists(name)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Já existe uma categoria com esse nome.')),
+      );
+      return;
+    }
 
     if (_isEditing) {
       catService.update(

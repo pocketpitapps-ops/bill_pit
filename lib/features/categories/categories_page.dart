@@ -25,14 +25,21 @@ class CategoriesPage extends StatelessWidget {
             byCategory.putIfAbsent(e.category, () => []).add(e);
           }
 
-          final sorted = byCategory.entries.toList()
-            ..sort((a, b) {
-              final totalA = a.value.fold<double>(0, (s, e) => s + e.amount);
-              final totalB = b.value.fold<double>(0, (s, e) => s + e.amount);
-              return totalB.compareTo(totalA);
-            });
-
+          final allCats = catService.categories;
           final grandTotal = expenses.fold<double>(0, (s, e) => s + e.amount);
+
+          final catEntries = allCats.map((cat) {
+            final catExpenses = byCategory[cat.name] ?? [];
+            final total = catExpenses.fold<double>(0, (s, e) => s + e.amount);
+            return _CatEntry(name: cat.name, icon: cat.icon, color: cat.color, expenses: catExpenses, total: total);
+          }).where((e) => e.total > 0 || e.expenses.isNotEmpty).toList();
+
+          final catsWithNoExpenses = allCats.where((cat) {
+            final catExpenses = byCategory[cat.name];
+            return catExpenses == null || catExpenses.isEmpty;
+          }).toList();
+
+          final sorted = [...catEntries..sort((a, b) => b.total.compareTo(a.total)), ...catsWithNoExpenses.map((cat) => _CatEntry(name: cat.name, icon: cat.icon, color: cat.color, expenses: [], total: 0))];
 
           return CustomScrollView(
             slivers: [
@@ -56,71 +63,73 @@ class CategoriesPage extends StatelessWidget {
               ),
               if (sorted.isEmpty)
                 const SliverFillRemaining(
-                  child: Center(child: Text('Sem despesas.')),
+                  child: Center(child: Text('Sem categorias.')),
                 )
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final entry = sorted[index];
-                      final catData = catService.findByName(entry.key);
-                      final total = entry.value.fold<double>(0, (s, e) => s + e.amount);
-                      final paid = entry.value.where((e) => e.isPaid).fold<double>(0, (s, e) => s + e.amount);
+                      final total = entry.total;
                       final percentage = grandTotal > 0 ? (total / grandTotal * 100) : 0.0;
+                      final paid = entry.expenses.where((e) => e.isPaid).fold<double>(0, (s, e) => s + e.amount);
 
                       return Card(
                         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                         child: ExpansionTile(
                           leading: CircleAvatar(
-                            backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
-                            child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey),
+                            backgroundColor: entry.color.withValues(alpha: 0.15),
+                            child: Icon(entry.icon, color: entry.color),
                           ),
-                          title: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          title: Text(entry.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                           subtitle: Text(
-                            '${total.toStringAsFixed(2)}€ · ${percentage.toStringAsFixed(1)}%',
+                            entry.expenses.isEmpty
+                                ? 'Sem despesas'
+                                : '${total.toStringAsFixed(2)}€ · ${percentage.toStringAsFixed(1)}%',
                             style: TextStyle(color: Colors.grey.shade600),
                           ),
-                          trailing: Text(
-                            '${entry.value.length}',
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                              child: Column(
-                                children: [
-                                  LinearProgressIndicator(
-                                    value: grandTotal > 0 ? total / grandTotal : 0,
-                                    backgroundColor: Colors.grey.shade200,
-                                    valueColor: AlwaysStoppedAnimation(catData?.color ?? Colors.grey),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('Pago: ${paid.toStringAsFixed(2)}€',
-                                          style: const TextStyle(fontSize: 12, color: Colors.green)),
-                                      Text('Pendente: ${(total - paid).toStringAsFixed(2)}€',
-                                          style: const TextStyle(fontSize: 12, color: Colors.red)),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ...entry.value.map((e) => ListTile(
-                                        dense: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        title: Text(e.name),
-                                        subtitle: Text('${e.amount.toStringAsFixed(2)}€ · Dia ${e.dueDay ?? '?'}'),
-                                        trailing: Icon(
-                                          e.isPaid ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-                                          color: e.isPaid ? Colors.green : Colors.red,
-                                          size: 20,
+                          trailing: entry.expenses.isNotEmpty
+                              ? Text('${entry.expenses.length}', style: TextStyle(color: Colors.grey.shade500))
+                              : null,
+                          children: entry.expenses.isEmpty
+                              ? []
+                              : [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                    child: Column(
+                                      children: [
+                                        LinearProgressIndicator(
+                                          value: grandTotal > 0 ? total / grandTotal : 0,
+                                          backgroundColor: Colors.grey.shade200,
+                                          valueColor: AlwaysStoppedAnimation(entry.color),
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
-                                      )),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text('Pago: ${paid.toStringAsFixed(2)}€',
+                                                style: const TextStyle(fontSize: 12, color: Colors.green)),
+                                            Text('Pendente: ${(total - paid).toStringAsFixed(2)}€',
+                                                style: const TextStyle(fontSize: 12, color: Colors.red)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        ...entry.expenses.map((e) => ListTile(
+                                              dense: true,
+                                              contentPadding: EdgeInsets.zero,
+                                              title: Text(e.name),
+                                              subtitle: Text('${e.amount.toStringAsFixed(2)}€ · Dia ${e.dueDay ?? '?'}'),
+                                              trailing: Icon(
+                                                e.isPaid ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+                                                color: e.isPaid ? Colors.green : Colors.red,
+                                                size: 20,
+                                              ),
+                                            )),
+                                      ],
+                                    ),
+                                  ),
                                 ],
-                              ),
-                            ),
-                          ],
                         ),
                       );
                     },
@@ -133,4 +142,13 @@ class CategoriesPage extends StatelessWidget {
       ),
     );
   }
+}
+
+class _CatEntry {
+  final String name;
+  final IconData icon;
+  final Color color;
+  final List<Expense> expenses;
+  final double total;
+  const _CatEntry({required this.name, required this.icon, required this.color, required this.expenses, required this.total});
 }

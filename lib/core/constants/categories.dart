@@ -7,7 +7,7 @@ enum ExpenseCategory {
   water,        // Água
   gas,          // Gás
   vehicle,      // Veículo
-  services,     // Serviço
+  services,     // Serviço (subscrições)
   credit,       // Crédito
   health,       // Saúde
 }
@@ -26,7 +26,7 @@ const Map<ExpenseCategory, CategoryData> categories = {
   ExpenseCategory.water: CategoryData('Água', Icons.water_outlined, Color(0xFF06B6D4)),
   ExpenseCategory.gas: CategoryData('Gás', Icons.local_fire_department_outlined, Color(0xFFF97316)),
   ExpenseCategory.vehicle: CategoryData('Veículo', Icons.directions_car_outlined, Color(0xFF14B8A6)),
-  ExpenseCategory.services: CategoryData('Serviço', Icons.build_outlined, Color(0xFF8B5CF6)),
+  ExpenseCategory.services: CategoryData('Serviço', Icons.subscriptions_outlined, Color(0xFF8B5CF6)),
   ExpenseCategory.credit: CategoryData('Crédito', Icons.credit_card_outlined, Color(0xFFEF4444)),
   ExpenseCategory.health: CategoryData('Saúde', Icons.favorite_outline, Color(0xFF10B981)),
 };
