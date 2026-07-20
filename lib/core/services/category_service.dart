@@ -131,8 +131,11 @@ class CategoryService extends ChangeNotifier {
 
   static List<AppCategory> _defaults() => const [
         AppCategory(name: 'Casa', iconCodePoint: 0xe559, colorValue: 0xFF3B82F6, isDefault: true),
+        AppCategory(name: 'Electricidade', iconCodePoint: 0xeedd, colorValue: 0xFFF59E0B, isDefault: true),
+        AppCategory(name: 'Água', iconCodePoint: 0xf4b4, colorValue: 0xFF06B6D4, isDefault: true),
+        AppCategory(name: 'Gás', iconCodePoint: 0xf17a, colorValue: 0xFFF97316, isDefault: true),
         AppCategory(name: 'Veículo', iconCodePoint: 0xe531, colorValue: 0xFF14B8A6, isDefault: true),
-        AppCategory(name: 'Serviço', iconCodePoint: 0xef06, colorValue: 0xFFF59E0B, isDefault: true),
+        AppCategory(name: 'Serviço', iconCodePoint: 0xef06, colorValue: 0xFF8B5CF6, isDefault: true),
         AppCategory(name: 'Crédito', iconCodePoint: 0xef8f, colorValue: 0xFFEF4444, isDefault: true),
         AppCategory(name: 'Saúde', iconCodePoint: 0xe548, colorValue: 0xFF10B981, isDefault: true),
       ];

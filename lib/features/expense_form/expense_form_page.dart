@@ -154,22 +154,10 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nome', hintText: 'Ex: Renda'),
-              textCapitalization: TextCapitalization.sentences,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _amountCtrl,
-              decoration: const InputDecoration(labelText: 'Valor (€)', hintText: '0.00'),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Obrigatório';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Número inválido';
-                return null;
-              },
+            _CategoryDropdown(
+              categories: allCategories,
+              selected: _category,
+              onChanged: (v) => setState(() => _category = v),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<_VisibleType>(
@@ -235,12 +223,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
-            _CategoryDropdown(
-              categories: allCategories,
-              selected: _category,
-              onChanged: (v) => setState(() => _category = v),
-            ),
             if (_showDueDay) ...[
               const SizedBox(height: 16),
               TextFormField(
@@ -395,6 +377,24 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                 },
               ),
             ],
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'Nome', hintText: 'Ex: Renda'),
+              textCapitalization: TextCapitalization.sentences,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _amountCtrl,
+              decoration: const InputDecoration(labelText: 'Valor (€)', hintText: '0.00'),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Obrigatório';
+                if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Número inválido';
+                return null;
+              },
+            ),
             const SizedBox(height: 24),
             if (_isEditing)
               SwitchListTile(

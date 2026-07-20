@@ -172,9 +172,9 @@ class ExpenseRepository {
 
     final seeds = [
       _seedExpense('Renda', 'Casa', 750.0, ExpenseType.fixed, 1),
-      _seedExpense('Luz', 'Serviço', 45.0, ExpenseType.monthly, 5),
-      _seedExpense('Água', 'Serviço', 30.0, ExpenseType.monthly, 10),
-      _seedExpense('Gás', 'Serviço', 25.0, ExpenseType.monthly, 12),
+      _seedExpense('Luz', 'Electricidade', 45.0, ExpenseType.monthly, 5),
+      _seedExpense('Água', 'Água', 30.0, ExpenseType.monthly, 10),
+      _seedExpense('Gás', 'Gás', 25.0, ExpenseType.monthly, 12),
       _seedExpense('Internet', 'Serviço', 35.0, ExpenseType.monthly, 15),
       _seedExpense('Telemóvel', 'Serviço', 20.0, ExpenseType.monthly, 15),
       _seedExpense('Seguro carro', 'Veículo', 85.0, ExpenseType.periodic, 1),
