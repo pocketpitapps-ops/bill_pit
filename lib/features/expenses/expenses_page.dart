@@ -4,6 +4,7 @@ import '../../core/services/category_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../expense_form/expense_form_page.dart';
+import '../expense_wizard/expense_wizard_page.dart';
 
 class ExpensesPage extends StatefulWidget {
   const ExpensesPage({super.key});
@@ -250,14 +251,60 @@ class _ExpensesPageState extends State<ExpensesPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ExpenseFormPage()),
-          );
-          if (result == true) _refresh();
-        },
+        onPressed: () => _showAddOptions(context),
         child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 20),
+            const Text('Nova despesa', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.auto_awesome)),
+              title: const Text('Wizard passo a passo'),
+              subtitle: const Text('Criar com ajuda, campo a campo'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExpenseWizardPage()),
+                );
+                if (result == true) _refresh();
+              },
+            ),
+            ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.edit_outlined)),
+              title: const Text('Formulario completo'),
+              subtitle: const Text('Preencher todos os campos de uma vez'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExpenseFormPage()),
+                );
+                if (result == true) _refresh();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

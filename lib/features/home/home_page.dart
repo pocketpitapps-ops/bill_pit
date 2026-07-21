@@ -42,7 +42,14 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (i) => setState(() => _currentIndex = i),
+        onDestinationSelected: (i) {
+          setState(() {
+            if (i == 0 || i == 2) {
+              _keys[i] = UniqueKey();
+            }
+            _currentIndex = i;
+          });
+        },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Início'),
           NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Despesas'),

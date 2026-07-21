@@ -3,6 +3,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 
 import '../home/home_page.dart';
+import '../onboarding/onboarding_config.dart';
+import '../onboarding/onboarding_page.dart';
 import 'splash_intro_config.dart';
 
 class SplashIntroPage extends StatefulWidget {
@@ -84,11 +86,15 @@ class _SplashIntroPageState extends State<SplashIntroPage>
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && !_navigated) {
-        Future.delayed(splashPostDelay, () {
+        Future.delayed(splashPostDelay, () async {
           if (!mounted || _navigated) return;
           _navigated = true;
+          final seen = await OnboardingConfig.hasCompleted();
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomePage()),
+            MaterialPageRoute(
+              builder: (_) => seen ? const HomePage() : const OnboardingPage(),
+            ),
           );
         });
       }
