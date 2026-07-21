@@ -25,7 +25,7 @@ dependencies:
   path_provider: ^2.1.5
   shared_preferences: ^2.2.3
   audioplayers: ^6.2.0
-  file_picker: ^8.0.0
+  file_picker: ^10.0.0
 
 dev_dependencies:
   flutter_test:
