@@ -680,6 +680,7 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
     }
 
     final oldName = widget.existing?.name;
+    final repo = context.read<ExpenseRepository>();
 
     if (_isEditing) {
       await catService.update(
@@ -689,7 +690,6 @@ class _CategoryFormSheetState extends State<_CategoryFormSheet> {
         color: _selectedColor,
       );
       if (oldName != name) {
-        final repo = context.read<ExpenseRepository>();
         final moved = await repo.renameCategory(oldName, name);
         if (mounted && moved > 0) {
           ScaffoldMessenger.of(context).showSnackBar(
