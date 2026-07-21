@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/services/backup_service.dart';
 import '../../core/services/category_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../data/models/expense.dart';
@@ -62,32 +63,10 @@ class SettingsPage extends StatelessWidget {
               Card(
                 child: Column(
                   children: [
-                    if (hasExpenses) ...[
-                      ListTile(
-                        leading: const Icon(Icons.delete_sweep_outlined),
-                        title: const Text('Limpar dados de exemplo'),
-                        subtitle: const Text('Remover todas as despesas seed'),
-                        onTap: () => _confirmClearSeed(context),
-                      ),
-                      Divider(height: 1, color: Colors.grey.shade200),
-                    ],
-                    ListTile(
-                      leading: const Icon(Icons.restore_outlined),
-                      title: const Text('Repor dados iniciais'),
-                      subtitle: const Text('Repor despesas e categorias de fábrica'),
-                      onTap: () => _confirmReset(context),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
-                    ListTile(
-                      leading: const Icon(Icons.info_outline),
-                      title: const Text('Sobre o Bill Pit'),
-                      subtitle: const Text('v0.1.0'),
-                      onTap: () => _showAbout(context),
-                    ),
-                    Divider(height: 1, color: Colors.grey.shade200),
                     ListTile(
                       leading: const Icon(Icons.privacy_tip_outlined),
                       title: const Text('Política de Privacidade'),
+                      trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const PrivacyPolicyPage()),
@@ -97,12 +76,56 @@ class SettingsPage extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.description_outlined),
                       title: const Text('Termos de Utilização'),
+                      trailing: const Icon(Icons.chevron_right),
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const TermsOfServicePage()),
                       ),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.backup_outlined),
+                      title: const Text('Exportar backup'),
+                      subtitle: const Text('Guardar dados num ficheiro JSON'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _exportBackup(context),
+                    ),
+                    Divider(height: 1, color: Colors.grey.shade200),
+                    ListTile(
+                      leading: const Icon(Icons.restore_outlined),
+                      title: const Text('Importar backup'),
+                      subtitle: const Text('Restaurar dados de um ficheiro JSON'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _importBackup(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 40),
+              if (hasExpenses)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _confirmClearSeed(context),
+                    icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+                    label: const Text('Limpar dados de exemplo', style: TextStyle(color: Colors.red)),
+                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
+                  ),
+                ),
+              if (hasExpenses) const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _confirmReset(context),
+                  icon: const Icon(Icons.restore_outlined, color: Colors.orange),
+                  label: const Text('Repor dados iniciais', style: TextStyle(color: Colors.orange)),
+                  style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.orange)),
                 ),
               ),
             ],
@@ -225,20 +248,95 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _showAbout(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: 'Bill Pit',
-      applicationVersion: '0.1.0',
-      applicationIcon: Icon(
-        Icons.receipt_long,
-        size: 48,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      children: const [
-        Text('Controlo de despesas mensais.\nDesenvolvido com Flutter.'),
-      ],
-    );
+  Future<void> _exportBackup(BuildContext context) async {
+    try {
+      final repo = context.read<ExpenseRepository>();
+      final catService = context.read<CategoryService>();
+      await BackupService.exportAndShare(repo: repo, catService: catService);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup exportado com sucesso.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao exportar: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importBackup(BuildContext context) async {
+    try {
+      final data = await BackupService.importFromPicker();
+      if (data == null) return;
+
+      final expensesCount = (data['expenses'] as List?)?.length ?? 0;
+      final categoriesCount = (data['categories'] as List?)?.length ?? 0;
+
+      if (!context.mounted) return;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Importar backup?'),
+          content: Text(
+            'Encontrado:\n'
+            '• $expensesCount despesa(s)\n'
+            '• $categoriesCount categoria(s)\n\n'
+            'Substituir todos os dados atuais?',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Importar', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirm != true || !context.mounted) return;
+
+      final repo = context.read<ExpenseRepository>();
+      final catService = context.read<CategoryService>();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A importar dados...')),
+      );
+
+      final result = await BackupService.restore(
+        data: data,
+        repo: repo,
+        catService: catService,
+        deleteExisting: true,
+      );
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(
+            'Importado: ${result.expenses} despesas, ${result.categories} categorias, ${result.settings} definições.'
+          )),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const HomePage()),
+          (_) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro: ${result.error}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao importar: $e')),
+        );
+      }
+    }
   }
 }
 
@@ -253,6 +351,11 @@ class _NotificationSettingsSheet extends StatefulWidget {
 
 class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> {
   int _summaryDay = 28;
+  int _summaryHour = 9;
+  int _weeklyHour = 21;
+  int _overdueDays = 3;
+  int _overdueHour = 9;
+  int _defaultReminderDays = 3;
 
   @override
   void initState() {
@@ -262,67 +365,155 @@ class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> 
 
   Future<void> _loadSettings() async {
     final day = await NotificationService.getMonthlySummaryDay();
-    setState(() => _summaryDay = day);
+    final sHour = await NotificationService.getMonthlySummaryHour();
+    final wHour = await NotificationService.getWeeklyPreviewHour();
+    final oDays = await NotificationService.getOverdueDays();
+    final oHour = await NotificationService.getOverdueHour();
+    final dDays = await NotificationService.getDefaultReminderDays();
+    setState(() {
+      _summaryDay = day;
+      _summaryHour = sHour;
+      _weeklyHour = wHour;
+      _overdueDays = oDays;
+      _overdueHour = oHour;
+      _defaultReminderDays = dDays;
+    });
   }
+
+  String _hourLabel(int h) => '${h.toString().padLeft(2, '0')}:00';
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 8, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text('Notificações', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          _NotificationTile(
-            icon: Icons.calendar_month_outlined,
-            title: 'Resumo Mensal',
-            subtitle: 'Dia $_summaryDay de cada mês',
-            onTap: () => _pickSummaryDay(context),
-          ),
-          _NotificationTile(
-            icon: Icons.view_week_outlined,
-            title: 'Preview Semanal',
-            subtitle: 'Domingo às 21h — próximos pagamentos',
-            enabled: false,
-          ),
-          _NotificationTile(
-            icon: Icons.warning_amber_outlined,
-            title: 'Atrasadas',
-            subtitle: 'Diariamente às 9h — despesas não pagas',
-            enabled: false,
-          ),
-          _NotificationTile(
-            icon: Icons.edit_calendar_outlined,
-            title: 'Valores por retificar',
-            subtitle: 'Verifica se despesas variáveis foram atualizadas',
-            enabled: false,
-          ),
-          const SizedBox(height: 16),
-        ],
+            const SizedBox(height: 16),
+            Text('Notificações', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _NotificationTile(
+              icon: Icons.calendar_month_outlined,
+              title: 'Resumo Mensal',
+              subtitle: 'Dia $_summaryDay de cada mês às ${_hourLabel(_summaryHour)}',
+              onTap: () => _pickSummaryDateTime(),
+            ),
+            _NotificationTile(
+              icon: Icons.view_week_outlined,
+              title: 'Preview Semanal',
+              subtitle: 'Domingo às ${_hourLabel(_weeklyHour)}',
+              onTap: () => _pickWeeklyHour(),
+            ),
+            _NotificationTile(
+              icon: Icons.warning_amber_outlined,
+              title: 'Atrasadas',
+              subtitle: '$_overdueDays dia(s) após o vencimento, às ${_hourLabel(_overdueHour)}',
+              onTap: () => _pickOverdueSettings(),
+            ),
+            const Divider(height: 32),
+            Text('Lembrete padrão', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              'Valor padrão para novas despesas',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.notifications_outlined, size: 20, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Text(
+                  '$_defaultReminderDays dia${_defaultReminderDays == 1 ? '' : 's'} antes',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+            Slider(
+              value: _defaultReminderDays.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: '$_defaultReminderDays dia${_defaultReminderDays == 1 ? '' : 's'}',
+              onChanged: (v) async {
+                setState(() => _defaultReminderDays = v.round());
+                await NotificationService.setDefaultReminderDays(_defaultReminderDays);
+              },
+            ),
+            const SizedBox(height: 8),
+            _NotificationTile(
+              icon: Icons.edit_calendar_outlined,
+              title: 'Valores por retificar',
+              subtitle: 'Verifica se despesas variáveis foram atualizadas',
+              enabled: false,
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _pickSummaryDay(BuildContext context) async {
-    final picked = await showDatePicker(
+  Future<void> _pickSummaryDateTime() async {
+    final date = await showDatePicker(
       context: context,
       initialDate: DateTime(DateTime.now().year, DateTime.now().month, _summaryDay),
       firstDate: DateTime(DateTime.now().year, DateTime.now().month, 1),
       lastDate: DateTime(DateTime.now().year, DateTime.now().month, 28),
     );
-    if (picked != null) {
-      setState(() => _summaryDay = picked.day);
-      await NotificationService.setMonthlySummaryDay(_summaryDay);
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _summaryHour, minute: 0),
+    );
+    if (time == null || !mounted) return;
+
+    setState(() {
+      _summaryDay = date.day;
+      _summaryHour = time.hour;
+    });
+    await NotificationService.setMonthlySummaryDay(_summaryDay);
+    await NotificationService.setMonthlySummaryHour(_summaryHour);
+  }
+
+  Future<void> _pickWeeklyHour() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _weeklyHour, minute: 0),
+    );
+    if (time != null && mounted) {
+      setState(() => _weeklyHour = time.hour);
+      await NotificationService.setWeeklyPreviewHour(_weeklyHour);
     }
+  }
+
+  Future<void> _pickOverdueSettings() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _overdueHour, minute: 0),
+    );
+    if (time == null || !mounted) return;
+
+    final days = await showDialog<int>(
+      context: context,
+      builder: (ctx) => _OverdueDaysPicker(initialDays: _overdueDays),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _overdueHour = time.hour;
+      if (days != null) _overdueDays = days;
+    });
+    await NotificationService.setOverdueHour(_overdueHour);
+    await NotificationService.setOverdueDays(_overdueDays);
   }
 }
 
@@ -350,6 +541,49 @@ class _NotificationTile extends StatelessWidget {
       trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
       onTap: enabled ? onTap : null,
       contentPadding: EdgeInsets.zero,
+    );
+  }
+}
+
+class _OverdueDaysPicker extends StatefulWidget {
+  final int initialDays;
+  const _OverdueDaysPicker({required this.initialDays});
+
+  @override
+  State<_OverdueDaysPicker> createState() => _OverdueDaysPickerState();
+}
+
+class _OverdueDaysPickerState extends State<_OverdueDaysPicker> {
+  late int _days;
+
+  @override
+  void initState() {
+    super.initState();
+    _days = widget.initialDays;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Janela de lembretes'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Notificar durante $_days dia(s) após o vencimento'),
+          Slider(
+            value: _days.toDouble(),
+            min: 1,
+            max: 7,
+            divisions: 6,
+            label: '$_days dia(s)',
+            onChanged: (v) => setState(() => _days = v.round()),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+        FilledButton(onPressed: () => Navigator.pop(context, _days), child: const Text('Guardar')),
+      ],
     );
   }
 }

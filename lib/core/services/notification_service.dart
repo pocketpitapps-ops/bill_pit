@@ -190,28 +190,32 @@ Future<void> _sendOverdueReminder() async {
   final isar = await _openIsar();
   final repo = ExpenseRepository(isar);
 
+  final globalOverdueDays = await NotificationService.getOverdueDays();
   final all = await repo.getAll();
   final now = DateTime.now();
   final today = DateTime(now.year, now.month, now.day);
 
-  final overdue = all.where((e) {
+  final needsReminder = all.where((e) {
     if (e.isPaid || e.dueDay == null) return false;
+    if (e.isPaidInMonth(now.month, now.year)) return false;
     final effectiveDay = e.effectiveDueDay(now.month, now.year);
     final dueDate = DateTime(now.year, now.month, effectiveDay);
-    return dueDate.isBefore(today);
+    final diff = today.difference(dueDate).inDays;
+    final window = globalOverdueDays > e.reminderDays ? globalOverdueDays : e.reminderDays;
+    return diff >= 0 && diff <= window;
   }).toList();
 
-  if (overdue.isEmpty) {
+  if (needsReminder.isEmpty) {
     await isar.close();
     return;
   }
 
-  final total = overdue.fold<double>(0, (s, e) => s + e.amount);
-  final names = overdue.map((e) => e.name).join(', ');
+  final total = needsReminder.fold<double>(0, (s, e) => s + e.amount);
+  final names = needsReminder.map((e) => e.name).join(', ');
 
   await plugin.show(
     9003,
-    '${overdue.length} despesa(s) por pagar',
+    '${needsReminder.length} despesa(s) por pagar',
     '$names — Total: ${total.toStringAsFixed(2)}€',
     NotificationDetails(
       android: AndroidNotificationDetails(
@@ -238,8 +242,7 @@ Future<void> _sendValueUpdateReminder() async {
 
   final all = await repo.getAll();
   final variableExpenses = all.where((e) =>
-      (e.type == ExpenseType.monthly || (e.type == ExpenseType.periodic && e.notifyDaysBefore < 0)) &&
-      !e.isPaid).toList();
+      e.isVariable && !e.isPaid).toList();
 
   if (variableExpenses.isEmpty) {
     await isar.close();
@@ -309,11 +312,12 @@ class NotificationService {
 
     final prefs = await SharedPreferences.getInstance();
     final summaryDay = prefs.getInt('monthly_summary_day') ?? 28;
+    final summaryHour = prefs.getInt('monthly_summary_hour') ?? 9;
 
     final now = DateTime.now();
-    var summaryDate = DateTime(now.year, now.month, summaryDay, 9, 0);
+    var summaryDate = DateTime(now.year, now.month, summaryDay, summaryHour, 0);
     if (summaryDate.isBefore(now)) {
-      summaryDate = DateTime(now.year, now.month + 1, summaryDay, 9, 0);
+      summaryDate = DateTime(now.year, now.month + 1, summaryDay, summaryHour, 0);
     }
     final initialDelay = summaryDate.difference(now);
 
@@ -351,6 +355,56 @@ class NotificationService {
   static Future<int> getMonthlySummaryDay() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt('monthly_summary_day') ?? 28;
+  }
+
+  static Future<void> setMonthlySummaryHour(int hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('monthly_summary_hour', hour);
+  }
+
+  static Future<int> getMonthlySummaryHour() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('monthly_summary_hour') ?? 9;
+  }
+
+  static Future<void> setWeeklyPreviewHour(int hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('weekly_preview_hour', hour);
+  }
+
+  static Future<int> getWeeklyPreviewHour() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('weekly_preview_hour') ?? 21;
+  }
+
+  static Future<void> setOverdueDays(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('overdue_days', days);
+  }
+
+  static Future<int> getOverdueDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('overdue_days') ?? 3;
+  }
+
+  static Future<void> setOverdueHour(int hour) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('overdue_hour', hour);
+  }
+
+  static Future<int> getOverdueHour() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('overdue_hour') ?? 9;
+  }
+
+  static Future<void> setDefaultReminderDays(int days) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('default_reminder_days', days);
+  }
+
+  static Future<int> getDefaultReminderDays() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('default_reminder_days') ?? 3;
   }
 }
 

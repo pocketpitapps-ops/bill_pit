@@ -32,8 +32,6 @@ const Map<ExpenseCategory, CategoryData> categories = {
 };
 
 const Map<ExpenseType, String> expenseTypeLabels = {
-  ExpenseType.fixed: 'Fixa',
-  ExpenseType.monthly: 'Fixa',
-  ExpenseType.periodic: 'Periódica',
+  ExpenseType.recurring: 'Recorrente',
   ExpenseType.unique: 'Única',
 };

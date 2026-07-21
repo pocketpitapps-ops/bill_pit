@@ -24,6 +24,10 @@ class ExpenseRepository {
     await _isar.writeTxn(() => _isar.expenses.delete(id));
   }
 
+  Future<void> deleteAll() async {
+    await _isar.writeTxn(() => _isar.expenses.clear());
+  }
+
   Future<void> togglePaid(int id, {bool? paid}) async {
     final expense = await _isar.expenses.get(id);
     if (expense == null) return;
@@ -77,24 +81,20 @@ class ExpenseRepository {
   bool _isRelevantToMonth(Expense e, int month, int year) {
     final target = DateTime(year, month);
     switch (e.type) {
-      case ExpenseType.fixed:
-      case ExpenseType.monthly:
+      case ExpenseType.recurring:
         if (e.startDate != null) {
           final startMonth = DateTime(e.startDate!.year, e.startDate!.month);
           if (target.isBefore(startMonth)) return false;
         }
-        return true;
-      case ExpenseType.periodic:
+        final freq = e.frequency ?? 1;
+        if (freq <= 0) return true;
         if (e.startDate == null) return true;
-        final start = e.startDate!;
-        final startMonth = DateTime(start.year, start.month);
-        final freq = e.notifyDaysBefore.abs();
-        if (freq == 0) return true;
+        final startMonth = DateTime(e.startDate!.year, e.startDate!.month);
         final diffMonths = (target.year - startMonth.year) * 12 + (target.month - startMonth.month);
         if (diffMonths < 0) return false;
         if (e.installments != null) {
           final totalMonths = e.installments! * freq;
-          final endMonth = DateTime(start.year, start.month + totalMonths);
+          final endMonth = DateTime(e.startDate!.year, e.startDate!.month + totalMonths);
           if (target.isAfter(DateTime(endMonth.year, endMonth.month))) return false;
         } else if (e.endDate != null) {
           if (target.isAfter(DateTime(e.endDate!.year, e.endDate!.month))) return false;
@@ -222,16 +222,16 @@ class ExpenseRepository {
     if (count > 0) return;
 
     final seeds = [
-      _seedExpense('Renda', 'Casa', 750.0, ExpenseType.fixed, 1),
-      _seedExpense('Luz', 'Electricidade', 45.0, ExpenseType.monthly, 5),
-      _seedExpense('Água', 'Água', 30.0, ExpenseType.monthly, 10),
-      _seedExpense('Gás', 'Gás', 25.0, ExpenseType.monthly, 12),
-      _seedExpense('Internet', 'Subscrições', 35.0, ExpenseType.monthly, 15),
-      _seedExpense('Telemóvel', 'Subscrições', 20.0, ExpenseType.monthly, 15),
-      _seedExpense('Seguro carro', 'Veículo', 85.0, ExpenseType.periodic, 1),
-      _seedExpense('Combustível', 'Veículo', 120.0, ExpenseType.monthly, 20),
-      _seedExpense('Ginásio', 'Saúde', 30.0, ExpenseType.monthly, 5),
-      _seedExpense('Crédito habitação', 'Crédito', 450.0, ExpenseType.periodic, 5),
+      _seedExpense('Renda', 'Casa', 750.0, ExpenseType.recurring, 1, isVariable: false, frequency: 1),
+      _seedExpense('Luz', 'Electricidade', 45.0, ExpenseType.recurring, 5, isVariable: true, frequency: 1),
+      _seedExpense('Água', 'Água', 30.0, ExpenseType.recurring, 10, isVariable: true, frequency: 1),
+      _seedExpense('Gás', 'Gás', 25.0, ExpenseType.recurring, 12, isVariable: true, frequency: 1),
+      _seedExpense('Internet', 'Subscrições', 35.0, ExpenseType.recurring, 15, isVariable: false, frequency: 1),
+      _seedExpense('Telemóvel', 'Subscrições', 20.0, ExpenseType.recurring, 15, isVariable: false, frequency: 1),
+      _seedExpense('Seguro carro', 'Veículo', 85.0, ExpenseType.recurring, 1, isVariable: false, frequency: 1),
+      _seedExpense('Combustível', 'Veículo', 120.0, ExpenseType.recurring, 20, isVariable: true, frequency: 1),
+      _seedExpense('Ginásio', 'Saúde', 30.0, ExpenseType.recurring, 5, isVariable: false, frequency: 1),
+      _seedExpense('Crédito habitação', 'Crédito', 450.0, ExpenseType.recurring, 5, isVariable: false, frequency: 1),
     ];
 
     await _isar.writeTxn(() => _isar.expenses.putAll(seeds));
@@ -242,17 +242,21 @@ class ExpenseRepository {
     String category,
     double amount,
     ExpenseType type,
-    int dueDay,
-  ) {
+    int dueDay, {
+    bool isVariable = false,
+    int frequency = 1,
+  }) {
     return Expense()
       ..name = name
       ..category = category
       ..amount = amount
       ..type = type
+      ..isVariable = isVariable
       ..dueDay = dueDay
+      ..frequency = frequency
       ..isPaid = false
       ..amountConfirmed = false
-      ..notifyDaysBefore = 1
+      ..reminderDays = 3
       ..isActive = true
       ..createdAt = DateTime.now();
   }

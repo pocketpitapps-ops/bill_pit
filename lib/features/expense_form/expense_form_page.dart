@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/category_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/services/value_tracking_service.dart';
 import '../../data/models/expense.dart';
 import '../../data/repositories/expense_repository.dart';
-
-enum _VisibleType { fixed, periodic, unique }
 
 class ExpenseFormPage extends StatefulWidget {
   final Expense? expense;
@@ -22,12 +21,13 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   late TextEditingController _amountCtrl;
   late TextEditingController _dueDayCtrl;
   late TextEditingController _installmentsCtrl;
-  late _VisibleType _visibleType;
+  late ExpenseType _type;
   late bool _isVariable;
   late String _category;
   late bool _isPaid;
   late bool _amountConfirmed;
   late int _frequency;
+  late int _reminderDays;
 
   DateTime? _startDate;
   DateTime? _endDate;
@@ -42,65 +42,50 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   };
 
   bool get _isEditing => widget.expense != null;
+  bool get _isRecurring => _type == ExpenseType.recurring;
+  bool get _isUnique => _type == ExpenseType.unique;
 
   @override
   void initState() {
     super.initState();
     final e = widget.expense;
     _nameCtrl = TextEditingController(text: e?.name ?? '');
-    _amountCtrl = TextEditingController(text: e != null ? e.amount.toStringAsFixed(2) : '');
+    _amountCtrl = TextEditingController(
+      text: e != null ? e.amount.toStringAsFixed(2) : '',
+    );
     _dueDayCtrl = TextEditingController(text: e?.dueDay?.toString() ?? '');
-    _installmentsCtrl = TextEditingController(text: e?.installments?.toString() ?? '');
+    _installmentsCtrl = TextEditingController(
+      text: e?.installments?.toString() ?? '',
+    );
 
     if (e != null) {
       _category = e.category;
-      _visibleType = _expenseTypeToVisible(e.type);
+      _type = e.type;
+      _isVariable = e.isVariable;
       _isPaid = e.isPaid;
       _amountConfirmed = e.amountConfirmed;
+      _reminderDays = e.reminderDays;
       _startDate = e.startDate;
       _endDate = e.endDate;
-      if (e.type == ExpenseType.periodic) {
-        final raw = e.notifyDaysBefore;
-        _frequency = raw.abs() > 0 ? raw.abs() : 1;
-        _isVariable = raw < 0;
-      } else {
-        _isVariable = e.type == ExpenseType.monthly;
-        _frequency = 1;
-      }
+      _frequency = e.frequency ?? 1;
     } else {
       _category = '';
-      _visibleType = _VisibleType.fixed;
+      _type = ExpenseType.recurring;
       _isVariable = false;
       _isPaid = false;
       _amountConfirmed = false;
+      _reminderDays = 3;
       _frequency = 1;
       if (widget.initialDueDay != null) {
         _dueDayCtrl.text = widget.initialDueDay.toString();
       }
+      _loadDefaultReminderDays();
     }
   }
 
-  _VisibleType _expenseTypeToVisible(ExpenseType t) {
-    switch (t) {
-      case ExpenseType.fixed:
-      case ExpenseType.monthly:
-        return _VisibleType.fixed;
-      case ExpenseType.periodic:
-        return _VisibleType.periodic;
-      case ExpenseType.unique:
-        return _VisibleType.unique;
-    }
-  }
-
-  ExpenseType get _internalType {
-    switch (_visibleType) {
-      case _VisibleType.fixed:
-        return _isVariable ? ExpenseType.monthly : ExpenseType.fixed;
-      case _VisibleType.periodic:
-        return ExpenseType.periodic;
-      case _VisibleType.unique:
-        return ExpenseType.unique;
-    }
+  Future<void> _loadDefaultReminderDays() async {
+    final days = await NotificationService.getDefaultReminderDays();
+    if (mounted) setState(() => _reminderDays = days);
   }
 
   @override
@@ -112,25 +97,11 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     super.dispose();
   }
 
-  bool get _showDueDay => _visibleType == _VisibleType.fixed;
-  bool get _showPeriodicFields => _visibleType == _VisibleType.periodic;
-  bool get _showUniqueDate => _visibleType == _VisibleType.unique;
-  bool get _showVariableToggle => _showDueDay || _showPeriodicFields;
-  bool get _showInstallments => _showPeriodicFields && !_isVariable && _frequency == 1;
-
   String get _typeDescription {
-    switch (_visibleType) {
-      case _VisibleType.fixed:
-        return _isVariable
-            ? 'Recorrente mensal. Valor muda a cada mês. Ex: luz, água.'
-            : 'Valor fixo todos os meses. Ex: renda, seguro.';
-      case _VisibleType.periodic:
-        return _isVariable
-            ? 'Recorrente. Prestação pode variar. Ex: crédito francês.'
-            : 'Recorrente com prestação fixa. Ex: crédito pessoal.';
-      case _VisibleType.unique:
-        return 'Uma única vez. Sem repetição. Ex: avaria.';
-    }
+    if (_isUnique) return 'Uma única vez. Sem repetição. Ex: avaria.';
+    return _isVariable
+        ? 'Recorrente. Valor pode mudar a cada período. Ex: luz, água, crédito francês.'
+        : 'Valor fixo todos os meses. Ex: renda, seguro, crédito pessoal.';
   }
 
   @override
@@ -164,21 +135,31 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               onChanged: (v) => setState(() => _category = v),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<_VisibleType>(
-              initialValue: _visibleType,
+            DropdownButtonFormField<ExpenseType>(
+              initialValue: _type,
               decoration: const InputDecoration(labelText: 'Tipo'),
               items: const [
-                DropdownMenuItem(value: _VisibleType.fixed, child: Text('Fixa')),
-                DropdownMenuItem(value: _VisibleType.periodic, child: Text('Periódica')),
-                DropdownMenuItem(value: _VisibleType.unique, child: Text('Única')),
+                DropdownMenuItem(
+                  value: ExpenseType.recurring,
+                  child: Text('Recorrente'),
+                ),
+                DropdownMenuItem(
+                  value: ExpenseType.unique,
+                  child: Text('Única'),
+                ),
               ],
-              onChanged: (v) => setState(() {
-                _visibleType = v!;
-                if (v != _VisibleType.fixed) _isVariable = false;
-              }),
+              onChanged: (v) => setState(() => _type = v!),
             ),
-            if (_showVariableToggle) ...[
-              const SizedBox(height: 8),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                _typeDescription,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ),
+            if (_isRecurring) ...[
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
@@ -200,34 +181,33 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                   ),
                 ],
               ),
-            ],
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                _typeDescription,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-            ),
-            if (_isVariable && _showVariableToggle) ...[
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 14, color: Colors.orange.shade700),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        'Atualiza o valor quando receberes a factura.',
-                        style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+              if (_isVariable) ...[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: Colors.orange.shade700),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Atualiza o valor quando receberes a factura.',
+                          style: TextStyle(fontSize: 11, color: Colors.orange.shade700),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+              ],
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int>(
+                initialValue: _frequency,
+                decoration: const InputDecoration(labelText: 'Frequência'),
+                items: _frequencyOptions
+                    .map((f) => DropdownMenuItem(value: f, child: Text(_frequencyLabels[f]!)))
+                    .toList(),
+                onChanged: (v) => setState(() => _frequency = v!),
               ),
-            ],
-            if (_showDueDay) ...[
               const SizedBox(height: 16),
               TextFormField(
                 controller: _dueDayCtrl,
@@ -239,17 +219,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                   if (n == null || n < 1 || n > 31) return 'Inválido (1-31)';
                   return null;
                 },
-              ),
-            ],
-            if (_showPeriodicFields) ...[
-              const SizedBox(height: 16),
-              DropdownButtonFormField<int>(
-                initialValue: _frequency,
-                decoration: const InputDecoration(labelText: 'Frequência'),
-                items: _frequencyOptions
-                    .map((f) => DropdownMenuItem(value: f, child: Text(_frequencyLabels[f]!)))
-                    .toList(),
-                onChanged: (v) => setState(() => _frequency = v!),
               ),
               const SizedBox(height: 16),
               ListTile(
@@ -274,89 +243,79 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                   if (date != null) setState(() => _startDate = date);
                 },
               ),
-              if (_showInstallments) ...[
-                TextFormField(
-                  controller: _installmentsCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Prestações',
-                    hintText: 'Ex: 12',
-                    suffixText: 'prestações',
-                  ),
-                  keyboardType: TextInputType.number,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    final n = int.tryParse(v);
-                    if (n == null || n < 1) return 'Mínimo 1';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Text(
-                    'Número de prestações. Se não preencher, recorre para sempre.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              const SizedBox(height: 8),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Data fim'),
+                subtitle: Text(
+                  _endDate != null
+                      ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                      : 'Selecionar data',
+                  style: TextStyle(
+                    color: _endDate != null ? null : Theme.of(context).colorScheme.primary,
                   ),
                 ),
-              ] else ...[
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Row(
-                    children: [
-                      const Text('Data fim'),
-                      const SizedBox(width: 8),
-                      Text('(opcional)', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                    ],
-                  ),
-                  subtitle: Text(
-                    _endDate != null
-                        ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                        : 'Sem data fim — recorrente para sempre',
-                    style: TextStyle(
-                      color: _endDate != null ? null : Colors.grey.shade500,
-                    ),
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_endDate != null)
-                        IconButton(
-                          icon: const Icon(Icons.clear, size: 18),
-                          onPressed: () => setState(() => _endDate = null),
-                        ),
-                      const Icon(Icons.calendar_today),
-                    ],
-                  ),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _endDate ?? _startDate ?? DateTime.now(),
-                      firstDate: _startDate ?? DateTime(2020),
-                      lastDate: DateTime(2030),
-                    );
-                    if (date != null) setState(() => _endDate = date);
-                  },
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_endDate != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () => setState(() { _endDate = null; _installmentsCtrl.clear(); }),
+                      ),
+                    const Icon(Icons.calendar_today),
+                  ],
                 ),
-              ],
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _endDate ?? _startDate ?? DateTime.now(),
+                    firstDate: _startDate ?? DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (date != null) setState(() { _endDate = date; _installmentsCtrl.clear(); });
+                },
+              ),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _installmentsCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Prestações',
+                  hintText: 'Ex: 12',
+                  suffixText: 'prestações',
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {
+                  if (_installmentsCtrl.text.isNotEmpty) _endDate = null;
+                }),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final n = int.tryParse(v);
+                  if (n == null || n < 1) return 'Mínimo 1';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Text(
+                  'Preencha data fim OU prestações (ou nenhum para sempre).',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
               if (_startDate != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: _showInstallments
-                      ? _PeriodicPreview(
-                          amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
-                          startDate: _startDate!,
-                          installments: int.tryParse(_installmentsCtrl.text),
-                          frequency: _frequency,
-                        )
-                      : _PeriodicPreview(
-                          amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
-                          startDate: _startDate!,
-                          endDate: _endDate,
-                          frequency: _frequency,
-                        ),
+                  child: _PeriodicPreview(
+                    amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
+                    startDate: _startDate!,
+                    installments: int.tryParse(_installmentsCtrl.text),
+                    endDate: _endDate,
+                    frequency: _frequency,
+                  ),
                 ),
             ],
-            if (_showUniqueDate) ...[
+            if (_isUnique) ...[
               const SizedBox(height: 16),
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -395,7 +354,9 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Obrigatório';
-                if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Número inválido';
+                if (double.tryParse(v.replaceAll(',', '.')) == null) {
+                  return 'Número inválido';
+                }
                 return null;
               },
             ),
@@ -421,6 +382,33 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                 controlAffinity: ListTileControlAffinity.leading,
               ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.notifications_outlined, size: 20, color: Colors.grey.shade600),
+                const SizedBox(width: 8),
+                Text(
+                  'Lembrar $_reminderDays dia${_reminderDays == 1 ? '' : 's'} antes',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+            Slider(
+              value: _reminderDays.toDouble(),
+              min: 1,
+              max: 15,
+              divisions: 14,
+              label: '$_reminderDays dia${_reminderDays == 1 ? '' : 's'}',
+              onChanged: (v) => setState(() => _reminderDays = v.round()),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                'Receber notificação $_reminderDays dia${_reminderDays == 1 ? '' : 's'} antes do vencimento.',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              ),
+            ),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _save,
               child: Text(_isEditing ? 'Guardar' : 'Adicionar'),
@@ -434,13 +422,13 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_showPeriodicFields && _startDate == null) {
+    if (_isRecurring && _startDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Seleciona a data início.')),
       );
       return;
     }
-    if (_showUniqueDate && _startDate == null) {
+    if (_isUnique && _startDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Seleciona a data da despesa.')),
       );
@@ -451,25 +439,24 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     final amount = double.parse(_amountCtrl.text.replaceAll(',', '.'));
     final dueDay = int.tryParse(_dueDayCtrl.text);
     final installments = int.tryParse(_installmentsCtrl.text);
-    final freqValue = _showPeriodicFields
-        ? (_isVariable ? -_frequency : _frequency)
-        : (_isVariable ? 1 : 0);
 
-    final useInstallments = _showInstallments;
-    final useEndDate = _showPeriodicFields && !useInstallments;
+    final useInstallments = _isRecurring && installments != null && installments > 0;
+    final useEndDate = _isRecurring && _endDate != null && !useInstallments;
 
     int savedId;
     if (_isEditing) {
       final e = widget.expense!
         ..name = _nameCtrl.text.trim()
         ..amount = amount
-        ..type = _internalType
+        ..type = _type
+        ..isVariable = _isVariable
         ..category = _category
-        ..dueDay = _showDueDay ? dueDay : null
+        ..dueDay = _isRecurring ? dueDay : null
         ..startDate = _startDate
         ..endDate = useEndDate ? _endDate : null
         ..installments = useInstallments ? installments : null
-        ..notifyDaysBefore = freqValue
+        ..frequency = _isRecurring ? _frequency : null
+        ..reminderDays = _reminderDays
         ..isPaid = _isPaid
         ..amountConfirmed = _amountConfirmed;
       await repo.update(e);
@@ -478,13 +465,15 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       final e = Expense()
         ..name = _nameCtrl.text.trim()
         ..amount = amount
-        ..type = _internalType
+        ..type = _type
+        ..isVariable = _isVariable
         ..category = _category
-        ..dueDay = _showDueDay ? dueDay : null
+        ..dueDay = _isRecurring ? dueDay : null
         ..startDate = _startDate
         ..endDate = useEndDate ? _endDate : null
         ..installments = useInstallments ? installments : null
-        ..notifyDaysBefore = freqValue
+        ..frequency = _isRecurring ? _frequency : null
+        ..reminderDays = _reminderDays
         ..isPaid = false
         ..amountConfirmed = false
         ..isActive = true;

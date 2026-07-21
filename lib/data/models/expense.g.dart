@@ -39,42 +39,52 @@ const ExpenseSchema = CollectionSchema(
       name: r'endDate',
       type: IsarType.dateTime,
     ),
-    r'installments': PropertySchema(
+    r'frequency': PropertySchema(
       id: 6,
+      name: r'frequency',
+      type: IsarType.long,
+    ),
+    r'installments': PropertySchema(
+      id: 7,
       name: r'installments',
       type: IsarType.long,
     ),
-    r'isActive': PropertySchema(id: 7, name: r'isActive', type: IsarType.bool),
-    r'isPaid': PropertySchema(id: 8, name: r'isPaid', type: IsarType.bool),
-    r'name': PropertySchema(id: 9, name: r'name', type: IsarType.string),
-    r'notifyDaysBefore': PropertySchema(
+    r'isActive': PropertySchema(id: 8, name: r'isActive', type: IsarType.bool),
+    r'isPaid': PropertySchema(id: 9, name: r'isPaid', type: IsarType.bool),
+    r'isVariable': PropertySchema(
       id: 10,
-      name: r'notifyDaysBefore',
-      type: IsarType.long,
+      name: r'isVariable',
+      type: IsarType.bool,
     ),
+    r'name': PropertySchema(id: 11, name: r'name', type: IsarType.string),
     r'paidDate': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'paidDate',
       type: IsarType.dateTime,
     ),
     r'paidMonths': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'paidMonths',
       type: IsarType.longList,
     ),
+    r'reminderDays': PropertySchema(
+      id: 14,
+      name: r'reminderDays',
+      type: IsarType.long,
+    ),
     r'startDate': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'type': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'type',
       type: IsarType.byte,
       enumMap: _ExpensetypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -119,16 +129,18 @@ void _expenseSerialize(
   writer.writeDateTime(offsets[3], object.createdAt);
   writer.writeLong(offsets[4], object.dueDay);
   writer.writeDateTime(offsets[5], object.endDate);
-  writer.writeLong(offsets[6], object.installments);
-  writer.writeBool(offsets[7], object.isActive);
-  writer.writeBool(offsets[8], object.isPaid);
-  writer.writeString(offsets[9], object.name);
-  writer.writeLong(offsets[10], object.notifyDaysBefore);
-  writer.writeDateTime(offsets[11], object.paidDate);
-  writer.writeLongList(offsets[12], object.paidMonths);
-  writer.writeDateTime(offsets[13], object.startDate);
-  writer.writeByte(offsets[14], object.type.index);
-  writer.writeDateTime(offsets[15], object.updatedAt);
+  writer.writeLong(offsets[6], object.frequency);
+  writer.writeLong(offsets[7], object.installments);
+  writer.writeBool(offsets[8], object.isActive);
+  writer.writeBool(offsets[9], object.isPaid);
+  writer.writeBool(offsets[10], object.isVariable);
+  writer.writeString(offsets[11], object.name);
+  writer.writeDateTime(offsets[12], object.paidDate);
+  writer.writeLongList(offsets[13], object.paidMonths);
+  writer.writeLong(offsets[14], object.reminderDays);
+  writer.writeDateTime(offsets[15], object.startDate);
+  writer.writeByte(offsets[16], object.type.index);
+  writer.writeDateTime(offsets[17], object.updatedAt);
 }
 
 Expense _expenseDeserialize(
@@ -144,19 +156,21 @@ Expense _expenseDeserialize(
   object.createdAt = reader.readDateTime(offsets[3]);
   object.dueDay = reader.readLongOrNull(offsets[4]);
   object.endDate = reader.readDateTimeOrNull(offsets[5]);
+  object.frequency = reader.readLongOrNull(offsets[6]);
   object.id = id;
-  object.installments = reader.readLongOrNull(offsets[6]);
-  object.isActive = reader.readBool(offsets[7]);
-  object.isPaid = reader.readBool(offsets[8]);
-  object.name = reader.readString(offsets[9]);
-  object.notifyDaysBefore = reader.readLong(offsets[10]);
-  object.paidDate = reader.readDateTimeOrNull(offsets[11]);
-  object.paidMonths = reader.readLongList(offsets[12]) ?? [];
-  object.startDate = reader.readDateTimeOrNull(offsets[13]);
+  object.installments = reader.readLongOrNull(offsets[7]);
+  object.isActive = reader.readBool(offsets[8]);
+  object.isPaid = reader.readBool(offsets[9]);
+  object.isVariable = reader.readBool(offsets[10]);
+  object.name = reader.readString(offsets[11]);
+  object.paidDate = reader.readDateTimeOrNull(offsets[12]);
+  object.paidMonths = reader.readLongList(offsets[13]) ?? [];
+  object.reminderDays = reader.readLong(offsets[14]);
+  object.startDate = reader.readDateTimeOrNull(offsets[15]);
   object.type =
-      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[14])] ??
-      ExpenseType.fixed;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[15]);
+      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[16])] ??
+      ExpenseType.recurring;
+  object.updatedAt = reader.readDateTimeOrNull(offsets[17]);
   return object;
 }
 
@@ -182,41 +196,38 @@ P _expenseDeserializeProp<P>(
     case 6:
       return (reader.readLongOrNull(offset)) as P;
     case 7:
-      return (reader.readBool(offset)) as P;
+      return (reader.readLongOrNull(offset)) as P;
     case 8:
       return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readLong(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 11:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 12:
-      return (reader.readLongList(offset) ?? []) as P;
-    case 13:
       return (reader.readDateTimeOrNull(offset)) as P;
+    case 13:
+      return (reader.readLongList(offset) ?? []) as P;
     case 14:
-      return (_ExpensetypeValueEnumMap[reader.readByteOrNull(offset)] ??
-              ExpenseType.fixed)
-          as P;
+      return (reader.readLong(offset)) as P;
     case 15:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 16:
+      return (_ExpensetypeValueEnumMap[reader.readByteOrNull(offset)] ??
+              ExpenseType.recurring)
+          as P;
+    case 17:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
 }
 
-const _ExpensetypeEnumValueMap = {
-  'fixed': 0,
-  'monthly': 1,
-  'periodic': 2,
-  'unique': 3,
-};
+const _ExpensetypeEnumValueMap = {'recurring': 0, 'unique': 1};
 const _ExpensetypeValueEnumMap = {
-  0: ExpenseType.fixed,
-  1: ExpenseType.monthly,
-  2: ExpenseType.periodic,
-  3: ExpenseType.unique,
+  0: ExpenseType.recurring,
+  1: ExpenseType.unique,
 };
 
 Id _expenseGetId(Expense object) {
@@ -750,6 +761,81 @@ extension ExpenseQueryFilter
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNull(property: r'frequency'),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        const FilterCondition.isNotNull(property: r'frequency'),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyEqualTo(
+    int? value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'frequency', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyGreaterThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'frequency',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyLessThan(
+    int? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'frequency',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> frequencyBetween(
+    int? lower,
+    int? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'frequency',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -903,6 +989,16 @@ extension ExpenseQueryFilter
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> isVariableEqualTo(
+    bool value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'isVariable', value: value),
+      );
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> nameEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1045,61 +1141,6 @@ extension ExpenseQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
         FilterCondition.greaterThan(property: r'name', value: ''),
-      );
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> notifyDaysBeforeEqualTo(
-    int value,
-  ) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.equalTo(property: r'notifyDaysBefore', value: value),
-      );
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-  notifyDaysBeforeGreaterThan(int value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.greaterThan(
-          include: include,
-          property: r'notifyDaysBefore',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-  notifyDaysBeforeLessThan(int value, {bool include = false}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.lessThan(
-          include: include,
-          property: r'notifyDaysBefore',
-          value: value,
-        ),
-      );
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> notifyDaysBeforeBetween(
-    int lower,
-    int upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(
-        FilterCondition.between(
-          property: r'notifyDaysBefore',
-          lower: lower,
-          includeLower: includeLower,
-          upper: upper,
-          includeUpper: includeUpper,
-        ),
       );
     });
   }
@@ -1281,6 +1322,65 @@ extension ExpenseQueryFilter
         includeLower,
         upper,
         includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> reminderDaysEqualTo(
+    int value,
+  ) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'reminderDays', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> reminderDaysGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'reminderDays',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> reminderDaysLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'reminderDays',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> reminderDaysBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'reminderDays',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
       );
     });
   }
@@ -1574,6 +1674,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByFrequency() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequency', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByFrequencyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequency', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByInstallments() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'installments', Sort.asc);
@@ -1610,6 +1722,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByIsVariable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isVariable', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByIsVariableDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isVariable', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -1622,18 +1746,6 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByNotifyDaysBefore() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'notifyDaysBefore', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByNotifyDaysBeforeDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'notifyDaysBefore', Sort.desc);
-    });
-  }
-
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByPaidDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'paidDate', Sort.asc);
@@ -1643,6 +1755,18 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
   QueryBuilder<Expense, Expense, QAfterSortBy> sortByPaidDateDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'paidDate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByReminderDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> sortByReminderDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderDays', Sort.desc);
     });
   }
 
@@ -1757,6 +1881,18 @@ extension ExpenseQuerySortThenBy
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByFrequency() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequency', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByFrequencyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'frequency', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -1805,6 +1941,18 @@ extension ExpenseQuerySortThenBy
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByIsVariable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isVariable', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByIsVariableDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isVariable', Sort.desc);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByName() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.asc);
@@ -1817,18 +1965,6 @@ extension ExpenseQuerySortThenBy
     });
   }
 
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByNotifyDaysBefore() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'notifyDaysBefore', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByNotifyDaysBeforeDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'notifyDaysBefore', Sort.desc);
-    });
-  }
-
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByPaidDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'paidDate', Sort.asc);
@@ -1838,6 +1974,18 @@ extension ExpenseQuerySortThenBy
   QueryBuilder<Expense, Expense, QAfterSortBy> thenByPaidDateDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'paidDate', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByReminderDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderDays', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterSortBy> thenByReminderDaysDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'reminderDays', Sort.desc);
     });
   }
 
@@ -1918,6 +2066,12 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Expense, Expense, QDistinct> distinctByFrequency() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'frequency');
+    });
+  }
+
   QueryBuilder<Expense, Expense, QDistinct> distinctByInstallments() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'installments');
@@ -1936,17 +2090,17 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Expense, Expense, QDistinct> distinctByIsVariable() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isVariable');
+    });
+  }
+
   QueryBuilder<Expense, Expense, QDistinct> distinctByName({
     bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QDistinct> distinctByNotifyDaysBefore() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'notifyDaysBefore');
     });
   }
 
@@ -1959,6 +2113,12 @@ extension ExpenseQueryWhereDistinct
   QueryBuilder<Expense, Expense, QDistinct> distinctByPaidMonths() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'paidMonths');
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QDistinct> distinctByReminderDays() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'reminderDays');
     });
   }
 
@@ -2025,6 +2185,12 @@ extension ExpenseQueryProperty
     });
   }
 
+  QueryBuilder<Expense, int?, QQueryOperations> frequencyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'frequency');
+    });
+  }
+
   QueryBuilder<Expense, int?, QQueryOperations> installmentsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'installments');
@@ -2043,15 +2209,15 @@ extension ExpenseQueryProperty
     });
   }
 
-  QueryBuilder<Expense, String, QQueryOperations> nameProperty() {
+  QueryBuilder<Expense, bool, QQueryOperations> isVariableProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'name');
+      return query.addPropertyName(r'isVariable');
     });
   }
 
-  QueryBuilder<Expense, int, QQueryOperations> notifyDaysBeforeProperty() {
+  QueryBuilder<Expense, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'notifyDaysBefore');
+      return query.addPropertyName(r'name');
     });
   }
 
@@ -2064,6 +2230,12 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, List<int>, QQueryOperations> paidMonthsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'paidMonths');
+    });
+  }
+
+  QueryBuilder<Expense, int, QQueryOperations> reminderDaysProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'reminderDays');
     });
   }
 

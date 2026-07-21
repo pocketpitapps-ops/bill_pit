@@ -15,6 +15,8 @@ class Expense {
   @enumerated
   late ExpenseType type;
 
+  late bool isVariable;
+
   int? dueDay;
 
   DateTime? startDate;
@@ -23,13 +25,15 @@ class Expense {
 
   int? installments;
 
+  int? frequency;
+
   late bool isPaid;
 
   DateTime? paidDate;
 
   List<int> paidMonths = [];
 
-  late int notifyDaysBefore;
+  late int reminderDays;
 
   late bool isActive;
 
@@ -60,8 +64,6 @@ class Expense {
 }
 
 enum ExpenseType {
-  fixed,
-  monthly,
-  periodic,
+  recurring,
   unique,
 }

@@ -270,11 +270,7 @@ class _ExpenseTile extends StatelessWidget {
   final VoidCallback onRefresh;
   const _ExpenseTile({required this.expense, required this.month, required this.year, required this.onRefresh});
 
-  bool get _isVariable {
-    if (expense.type == ExpenseType.monthly) return true;
-    if (expense.type == ExpenseType.periodic && expense.notifyDaysBefore < 0) return true;
-    return false;
-  }
+  bool get _isVariable => expense.isVariable;
 
   @override
   Widget build(BuildContext context) {

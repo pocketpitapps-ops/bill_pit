@@ -124,6 +124,17 @@ class CategoryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> clearAll() async {
+    _categories = [];
+    await _save();
+    notifyListeners();
+  }
+
+  Future<void> addFromBackup(AppCategory cat) async {
+    _categories.add(cat);
+    await _save();
+  }
+
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, jsonEncode(_categories.map((c) => c.toJson()).toList()));
