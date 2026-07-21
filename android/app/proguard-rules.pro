@@ -1,4 +1,5 @@
 -dontwarn javax.annotation.**
+-dontwarn javax.xml.stream.**
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
