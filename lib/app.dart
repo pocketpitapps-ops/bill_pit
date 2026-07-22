@@ -1,5 +1,6 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/bill_pit_theme.dart';
 import 'features/intro/splash_intro_page.dart';
@@ -26,6 +27,18 @@ class BillPitApp extends StatelessWidget {
         Locale('en', 'US'),
       ],
       home: const SplashIntroPage(),
+      builder: (context, child) {
+        final brightness = Theme.of(context).brightness;
+        SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarBrightness: brightness,
+          statusBarIconBrightness: brightness == Brightness.light ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: brightness == Brightness.light ? Colors.white : const Color(0xFF1E293B),
+          systemNavigationBarIconBrightness: brightness == Brightness.light ? Brightness.dark : Brightness.light,
+          systemNavigationBarContrastEnforced: false,
+        ));
+        return child!;
+      },
     );
   }
 }

@@ -33,6 +33,8 @@ class Expense {
 
   List<int> paidMonths = [];
 
+  List<int> skippedMonths = [];
+
   late int reminderDays;
 
   late bool isActive;
@@ -45,6 +47,10 @@ class Expense {
 
   bool isPaidInMonth(int month, int year) {
     return paidMonths.contains(year * 100 + month);
+  }
+
+  bool isSkippedInMonth(int month, int year) {
+    return skippedMonths.contains(year * 100 + month);
   }
 
   static int monthKey(int month, int year) => year * 100 + month;

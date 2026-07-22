@@ -52,6 +52,21 @@ class ExpenseRepository {
     await _isar.writeTxn(() => _isar.expenses.put(expense));
   }
 
+  Future<void> toggleSkipMonth(int id, int month, int year) async {
+    final expense = await _isar.expenses.get(id);
+    if (expense == null) return;
+    final key = Expense.monthKey(month, year);
+    final list = List<int>.from(expense.skippedMonths);
+    if (list.contains(key)) {
+      list.remove(key);
+    } else {
+      list.add(key);
+    }
+    expense.skippedMonths = list;
+    expense.updatedAt = DateTime.now();
+    await _isar.writeTxn(() => _isar.expenses.put(expense));
+  }
+
   // ── QUERIES ──
 
   Future<Expense?> getById(int id) async {

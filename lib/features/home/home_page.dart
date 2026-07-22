@@ -346,55 +346,6 @@ class _DashboardTabState extends State<_DashboardTab> {
                     ),
                   );
                 }),
-                const SizedBox(height: 20),
-                Text('Pago vs Pendente', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 180,
-                  child: BarChart(
-                    BarChartData(
-                      alignment: BarChartAlignment.spaceAround,
-                      maxY: grandTotal * 1.2,
-                      barTouchData: BarTouchData(enabled: false),
-                      titlesData: const FlTitlesData(show: false),
-                      borderData: FlBorderData(show: false),
-                      gridData: const FlGridData(show: false),
-                      barGroups: [
-                        BarChartGroupData(
-                          x: 0,
-                          barRods: [
-                            BarChartRodData(
-                              toY: paidTotal,
-                              color: BillPitTheme.paid,
-                              width: 40,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                            ),
-                          ],
-                        ),
-                        BarChartGroupData(
-                          x: 1,
-                          barRods: [
-                            BarChartRodData(
-                              toY: unpaidTotal,
-                              color: BillPitTheme.unpaid,
-                              width: 40,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _Legend(color: BillPitTheme.paid, label: 'Pago'),
-                    const SizedBox(width: 24),
-                    _Legend(color: BillPitTheme.unpaid, label: 'Pendente'),
-                  ],
-                ),
               ],
               const SizedBox(height: 80),
             ],
@@ -445,23 +396,6 @@ class _SummaryCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Legend extends StatelessWidget {
-  final Color color;
-  final String label;
-  const _Legend({required this.color, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-      ],
     );
   }
 }

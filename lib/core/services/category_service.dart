@@ -118,6 +118,15 @@ class CategoryService extends ChangeNotifier {
   List<AppCategory> get defaults => _categories.where((c) => c.isDefault).toList();
   List<AppCategory> get custom => _categories.where((c) => !c.isDefault).toList();
 
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= _categories.length) return;
+    if (newIndex < 0 || newIndex >= _categories.length) return;
+    final item = _categories.removeAt(oldIndex);
+    _categories.insert(newIndex, item);
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> reset() async {
     _categories = _defaults();
     await _save();

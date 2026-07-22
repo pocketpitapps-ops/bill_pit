@@ -63,11 +63,16 @@ class _ExpensesPageState extends State<ExpensesPage> {
               return const Center(child: CircularProgressIndicator());
             }
             final allExpenses = snapshot.data!;
-            final filtered = _selectedCategory != null
-                ? allExpenses.where((e) => e.category == _selectedCategory).toList()
-                : allExpenses;
-
             final monthKey = Expense.monthKey(_selectedMonth.month, _selectedMonth.year);
+            final skipped = allExpenses.where((e) => e.skippedMonths.contains(monthKey)).toList();
+            final nonSkipped = allExpenses.where((e) => !e.skippedMonths.contains(monthKey)).toList();
+            final filtered = _selectedCategory != null
+                ? nonSkipped.where((e) => e.category == _selectedCategory).toList()
+                : nonSkipped;
+            final skippedFiltered = _selectedCategory != null
+                ? skipped.where((e) => e.category == _selectedCategory).toList()
+                : skipped;
+
             final now = DateTime.now();
             final unpaidFirst = <Expense>[];
             final paidLast = <Expense>[];
@@ -226,7 +231,7 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     ),
                   ),
                 ),
-                if (sorted.isEmpty)
+                if (sorted.isEmpty && skippedFiltered.isEmpty)
                   const SliverFillRemaining(
                     child: Center(child: Text('Sem despesas neste mês.')),
                   )
@@ -235,13 +240,26 @@ class _ExpensesPageState extends State<ExpensesPage> {
                     padding: const EdgeInsets.only(top: 8),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _ExpenseTile(
-                          expense: sorted[index],
-                          month: _selectedMonth.month,
-                          year: _selectedMonth.year,
-                          onRefresh: _refresh,
-                        ),
-                        childCount: sorted.length,
+                        (context, index) {
+                          if (index < sorted.length) {
+                            return _ExpenseTile(
+                              expense: sorted[index],
+                              month: _selectedMonth.month,
+                              year: _selectedMonth.year,
+                              onRefresh: _refresh,
+                              skipped: false,
+                            );
+                          }
+                          final skippedIndex = index - sorted.length;
+                          return _ExpenseTile(
+                            expense: skippedFiltered[skippedIndex],
+                            month: _selectedMonth.month,
+                            year: _selectedMonth.year,
+                            onRefresh: _refresh,
+                            skipped: true,
+                          );
+                        },
+                        childCount: sorted.length + skippedFiltered.length,
                       ),
                     ),
                   ),
@@ -315,7 +333,8 @@ class _ExpenseTile extends StatelessWidget {
   final int month;
   final int year;
   final VoidCallback onRefresh;
-  const _ExpenseTile({required this.expense, required this.month, required this.year, required this.onRefresh});
+  final bool skipped;
+  const _ExpenseTile({required this.expense, required this.month, required this.year, required this.onRefresh, this.skipped = false});
 
   bool get _isVariable => expense.isVariable;
 
@@ -331,21 +350,32 @@ class _ExpenseTile extends StatelessWidget {
     final catData = catService.findByName(expense.category);
 
     final now = DateTime.now();
-    final isOverdue = !paid && DateTime(year, month, effectiveDay).isBefore(DateTime(now.year, now.month, now.day));
+    final isOverdue = !skipped && !paid && DateTime(year, month, effectiveDay).isBefore(DateTime(now.year, now.month, now.day));
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
-          child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
+          backgroundColor: (skipped ? Colors.grey : (catData?.color ?? Colors.grey)).withValues(alpha: skipped ? 0.05 : 0.15),
+          child: Icon(
+            catData?.icon ?? Icons.more_horiz,
+            color: skipped ? Colors.grey : (catData?.color ?? Colors.grey),
+            size: 20,
+          ),
         ),
         title: Row(
           children: [
             Expanded(
-              child: Text(expense.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                expense.name,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  decoration: skipped ? TextDecoration.lineThrough : null,
+                  color: skipped ? Colors.grey : null,
+                ),
+              ),
             ),
-            if (_isVariable && !paid && !expense.amountConfirmed)
+            if (_isVariable && !paid && !skipped && !expense.amountConfirmed)
               Padding(
                 padding: const EdgeInsets.only(left: 6),
                 child: Icon(Icons.edit_note, size: 18, color: Colors.amber.shade700),
@@ -353,31 +383,36 @@ class _ExpenseTile extends StatelessWidget {
           ],
         ),
         subtitle: Text(
-          '$dueLabel · ${expense.category}',
+          skipped
+              ? '$amountStr · Ignorado'
+              : '$dueLabel · ${expense.category}',
           style: TextStyle(
-            color: isOverdue ? Colors.red.shade400 : null,
+            color: skipped ? Colors.grey : (isOverdue ? Colors.red.shade400 : null),
             fontSize: 13,
+            decoration: skipped ? TextDecoration.lineThrough : null,
           ),
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(amountStr, style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: paid ? Colors.green : (isOverdue ? Colors.red : Colors.amber.shade700),
-            )),
-            const SizedBox(width: 4),
-            Checkbox(
-              value: paid,
-              onChanged: (_) async {
-                await repo.togglePaidMonth(expense.id, month, year);
-                onRefresh();
-              },
-              activeColor: Colors.green,
-            ),
-          ],
-        ),
-        onTap: () async {
+        trailing: skipped
+            ? Icon(Icons.remove_circle_outline, color: Colors.grey.shade400, size: 20)
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(amountStr, style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: paid ? Colors.green : (isOverdue ? Colors.red : Colors.amber.shade700),
+                  )),
+                  const SizedBox(width: 4),
+                  Checkbox(
+                    value: paid,
+                    onChanged: (_) async {
+                      await repo.togglePaidMonth(expense.id, month, year);
+                      onRefresh();
+                    },
+                    activeColor: Colors.green,
+                  ),
+                ],
+              ),
+        onTap: skipped ? null : () async {
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => ExpenseFormPage(expense: expense)),

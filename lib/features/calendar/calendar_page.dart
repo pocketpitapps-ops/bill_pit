@@ -25,12 +25,14 @@ class _CalendarPageState extends State<CalendarPage> {
   void _prevMonth() => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1));
   void _nextMonth() => setState(() => _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1));
 
-  Color _dayColor(List<Expense> dayExpenses, int month, int year) {
-    if (dayExpenses.isEmpty) return Colors.transparent;
+  Color? _dayColor(List<Expense> dayExpenses, int month, int year) {
+    if (dayExpenses.isEmpty) return null;
     final key = Expense.monthKey(month, year);
     final now = DateTime.now();
-    final allPaid = dayExpenses.every((e) => e.paidMonths.contains(key));
-    final effectiveDay = dayExpenses.first.effectiveDueDay(month, year);
+    final activeExpenses = dayExpenses.where((e) => !e.skippedMonths.contains(key)).toList();
+    if (activeExpenses.isEmpty) return Colors.grey;
+    final allPaid = activeExpenses.every((e) => e.paidMonths.contains(key));
+    final effectiveDay = activeExpenses.first.effectiveDueDay(month, year);
     final isPast = DateTime(year, month, effectiveDay).isBefore(DateTime(now.year, now.month, now.day));
 
     if (allPaid) return Colors.green;
@@ -104,8 +106,11 @@ class _CalendarPageState extends State<CalendarPage> {
                     final isToday = day == DateTime.now().day &&
                         month == DateTime.now().month &&
                         year == DateTime.now().year;
-                    final total = dayExpenses.fold<double>(0, (s, e) => s + e.amount);
+                    final key = Expense.monthKey(month, year);
+                    final activeDayExpenses = dayExpenses.where((e) => !e.skippedMonths.contains(key)).toList();
+                    final total = activeDayExpenses.fold<double>(0, (s, e) => s + e.amount);
                     final color = _dayColor(dayExpenses, month, year);
+                    final hasAnyExpenses = dayExpenses.isNotEmpty;
 
                     return GestureDetector(
                       onTap: () => _showDayExpenses(context, day, dayExpenses, month, year),
@@ -114,17 +119,17 @@ class _CalendarPageState extends State<CalendarPage> {
                         decoration: BoxDecoration(
                           color: isToday
                               ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)
-                              : dayExpenses.isNotEmpty
+                              : hasAnyExpenses && color != null
                                   ? color.withValues(alpha: 0.15)
                                   : null,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: isToday
                                 ? Theme.of(context).colorScheme.primary
-                                : dayExpenses.isNotEmpty
+                                : hasAnyExpenses && color != null
                                     ? color
                                     : Colors.transparent,
-                            width: dayExpenses.isNotEmpty || isToday ? 1.5 : 0,
+                            width: hasAnyExpenses || isToday ? 1.5 : 0,
                           ),
                         ),
                         child: Column(
@@ -137,19 +142,29 @@ class _CalendarPageState extends State<CalendarPage> {
                                 color: isToday ? Theme.of(context).colorScheme.primary : null,
                               ),
                             ),
-                            if (dayExpenses.isNotEmpty) ...[
+                            if (hasAnyExpenses) ...[
                               const SizedBox(height: 2),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(4),
+                              if (activeDayExpenses.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '${total.toStringAsFixed(0)}€',
+                                    style: const TextStyle(color: Colors.white, fontSize: 9),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                                child: Text(
-                                  '${total.toStringAsFixed(0)}€',
-                                  style: const TextStyle(color: Colors.white, fontSize: 9),
-                                ),
-                              ),
                             ],
                           ],
                         ),
@@ -167,6 +182,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   void _showDayExpenses(BuildContext context, int day, List<Expense> expenses, int month, int year) {
     final catService = context.read<CategoryService>();
+    final repo = context.read<ExpenseRepository>();
     final monthKey = Expense.monthKey(month, year);
 
     showModalBottomSheet(
@@ -228,20 +244,62 @@ class _CalendarPageState extends State<CalendarPage> {
               ...expenses.map((e) {
                 final catData = catService.findByName(e.category);
                 final paid = e.paidMonths.contains(monthKey);
+                final skipped = e.skippedMonths.contains(monthKey);
                 final effectiveDay = e.effectiveDueDay(month, year);
                 final isPast = DateTime(year, month, effectiveDay).isBefore(DateTime.now());
-                final color = paid ? Colors.green : (isPast ? Colors.red : Colors.orange);
+                final color = skipped
+                    ? Colors.grey
+                    : (paid ? Colors.green : (isPast ? Colors.red : Colors.orange));
+                final isRecurring = e.type == ExpenseType.recurring;
+                final showSkip = isRecurring && !paid;
+
                 return Card(
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: 0.15),
-                      child: Icon(catData?.icon ?? Icons.more_horiz, color: catData?.color ?? Colors.grey, size: 20),
+                      backgroundColor: (catData?.color ?? Colors.grey).withValues(alpha: skipped ? 0.05 : 0.15),
+                      child: Icon(
+                        catData?.icon ?? Icons.more_horiz,
+                        color: skipped ? Colors.grey : (catData?.color ?? Colors.grey),
+                        size: 20,
+                      ),
                     ),
-                    title: Text(e.name),
-                    subtitle: Text('${e.amount.toStringAsFixed(2)}€ · ${expenseTypeLabels[e.type]}'),
-                    trailing: Icon(
-                      paid ? Icons.check_circle : Icons.radio_button_unchecked,
-                      color: color,
+                    title: Text(
+                      e.name,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        decoration: skipped ? TextDecoration.lineThrough : null,
+                        color: skipped ? Colors.grey : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      skipped
+                          ? '${e.amount.toStringAsFixed(2)}€ · Ignorado'
+                          : '${e.amount.toStringAsFixed(2)}€ · ${expenseTypeLabels[e.type]}',
+                      style: TextStyle(color: skipped ? Colors.grey : null),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showSkip)
+                          IconButton(
+                            icon: Icon(
+                              skipped ? Icons.replay : Icons.remove_circle_outline,
+                              color: skipped ? Colors.orange : Colors.grey,
+                              size: 22,
+                            ),
+                            tooltip: skipped ? 'Repor despesa' : 'Ignorar este mês',
+                            onPressed: () async {
+                              await repo.toggleSkipMonth(e.id, month, year);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                          ),
+                        if (!skipped)
+                          Icon(
+                            paid ? Icons.check_circle : Icons.radio_button_unchecked,
+                            color: color,
+                          ),
+                      ],
                     ),
                     onTap: () async {
                       Navigator.pop(ctx);

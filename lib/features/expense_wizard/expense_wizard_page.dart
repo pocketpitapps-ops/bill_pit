@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/category_service.dart';
 import '../../core/services/notification_service.dart';
@@ -24,7 +25,6 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
   bool _isVariable = false;
   final _nameCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
-  final _dueDayCtrl = TextEditingController();
   final _installmentsCtrl = TextEditingController();
   int _frequency = 1;
   int _reminderDays = 3;
@@ -35,7 +35,7 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
   bool get _isRecurring => _type == ExpenseType.recurring;
 
   int get _totalSteps {
-    if (_isRecurring) return 8;
+    if (_isRecurring) return 7;
     return 6;
   }
 
@@ -63,7 +63,6 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
     _pageCtrl.dispose();
     _nameCtrl.dispose();
     _amountCtrl.dispose();
-    _dueDayCtrl.dispose();
     _installmentsCtrl.dispose();
     super.dispose();
   }
@@ -108,9 +107,8 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
         return true;
       case 4:
         if (_isRecurring) {
-          final day = int.tryParse(_dueDayCtrl.text);
-          if (day == null || day < 1 || day > 31) {
-            _showError('Insere um dia valido (1-31).');
+          if (_startDate == null) {
+            _showError('Seleciona a data de vencimento.');
             return false;
           }
         } else {
@@ -132,7 +130,6 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
   Future<void> _save() async {
     final repo = context.read<ExpenseRepository>();
     final amount = double.parse(_amountCtrl.text.replaceAll(',', '.'));
-    final dueDay = int.tryParse(_dueDayCtrl.text);
     final installments = int.tryParse(_installmentsCtrl.text);
 
     final useInstallments = _isRecurring && installments != null && installments > 0;
@@ -144,7 +141,7 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
       ..type = _type
       ..isVariable = _isVariable
       ..category = _category
-      ..dueDay = _isRecurring ? dueDay : null
+      ..dueDay = _isRecurring && _startDate != null ? _startDate!.day : null
       ..startDate = _isRecurring ? _startDate : _uniqueDate
       ..endDate = useEndDate ? _endDate : null
       ..installments = useInstallments ? installments : null
@@ -183,7 +180,6 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
         _step = 0;
         _nameCtrl.clear();
         _amountCtrl.clear();
-        _dueDayCtrl.clear();
         _installmentsCtrl.clear();
         _type = ExpenseType.recurring;
         _category = '';
@@ -218,13 +214,13 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
     ];
 
     if (_isRecurring) {
-      steps.add(_StepDueDay(
-        controller: _dueDayCtrl,
+      steps.add(_StepVencimento(
+        date: _startDate,
+        onDatePicked: (d) => setState(() => _startDate = d),
         frequency: _frequency,
         frequencyLabels: _frequencyLabels,
         onFrequencyChanged: (f) => setState(() => _frequency = f),
       ));
-      steps.add(_StepStartDate(date: _startDate, onPicked: (d) => setState(() => _startDate = d)));
       steps.add(_StepEndOption(
         endDate: _endDate,
         installmentsCtrl: _installmentsCtrl,
@@ -241,7 +237,6 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
       name: _nameCtrl.text.trim(),
       amount: double.tryParse(_amountCtrl.text.replaceAll(',', '.')) ?? 0,
       isVariable: _isVariable,
-      dueDay: int.tryParse(_dueDayCtrl.text),
       frequency: _frequency,
       frequencyLabels: _frequencyLabels,
       startDate: _isRecurring ? _startDate : _uniqueDate,
@@ -515,7 +510,9 @@ class _StepName extends StatelessWidget {
             TextField(
               controller: controller,
               textCapitalization: TextCapitalization.sentences,
+              maxLength: 50,
               decoration: const InputDecoration(
+                labelText: 'Nome',
                 hintText: 'Ex: Renda, Luz, Internet...',
               ),
               onSubmitted: (_) {},
@@ -549,9 +546,11 @@ class _StepAmount extends StatelessWidget {
             TextField(
               controller: controller,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d,.]'))],
               decoration: const InputDecoration(
                 hintText: '0.00',
                 prefixText: '€ ',
+                labelText: 'Valor',
               ),
               onSubmitted: (_) {},
             ),
@@ -599,15 +598,17 @@ class _StepAmount extends StatelessWidget {
   }
 }
 
-// ── Step 5a: Due Day (recurring) ──
+// ── Step 5: Vencimento (recurring) / Date (unique) ──
 
-class _StepDueDay extends StatelessWidget {
-  final TextEditingController controller;
+class _StepVencimento extends StatelessWidget {
+  final DateTime? date;
+  final ValueChanged<DateTime> onDatePicked;
   final int frequency;
   final Map<int, String> frequencyLabels;
   final ValueChanged<int> onFrequencyChanged;
-  const _StepDueDay({
-    required this.controller,
+  const _StepVencimento({
+    required this.date,
+    required this.onDatePicked,
     required this.frequency,
     required this.frequencyLabels,
     required this.onFrequencyChanged,
@@ -622,15 +623,31 @@ class _StepDueDay extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
-            _StepHeader(icon: Icons.calendar_today_outlined, title: 'Quando vence?', subtitle: 'Dia do mes e frequencia da despesa.'),
+            _StepHeader(icon: Icons.calendar_today_outlined, title: 'Vencimento', subtitle: 'Quando comeca e com que frequencia.'),
             const SizedBox(height: 24),
-            TextField(
-              controller: controller,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Dia do mes',
-                hintText: '1-31',
+            ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: Colors.grey.shade300),
               ),
+              title: Text(
+                date != null
+                    ? '${date!.day}/${date!.month}/${date!.year}'
+                    : 'Selecionar data de vencimento',
+                style: TextStyle(
+                  color: date != null ? null : Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: date ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime(2030),
+                );
+                if (picked != null) onDatePicked(picked);
+              },
             ),
             const SizedBox(height: 24),
             Text('Frequencia', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
@@ -701,53 +718,7 @@ class _StepDate extends StatelessWidget {
   }
 }
 
-// ── Step 6: Start date (recurring) ──
-
-class _StepStartDate extends StatelessWidget {
-  final DateTime? date;
-  final ValueChanged<DateTime> onPicked;
-  const _StepStartDate({required this.date, required this.onPicked});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _StepHeader(icon: Icons.play_arrow_outlined, title: 'Data inicio?', subtitle: 'Quando comecas a pagar esta despesa.'),
-          const SizedBox(height: 24),
-          ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            title: Text(
-              date != null
-                  ? '${date!.day}/${date!.month}/${date!.year}'
-                  : 'Selecionar data inicio',
-              style: TextStyle(
-                color: date != null ? null : Theme.of(context).colorScheme.primary,
-              ),
-            ),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: date ?? DateTime.now(),
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-              );
-              if (picked != null) onPicked(picked);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Step 7: End date / installments (recurring, optional) ──
+// ── Step 6: End date / installments (recurring, optional) ──
 
 class _StepEndOption extends StatelessWidget {
   final DateTime? endDate;
@@ -770,7 +741,7 @@ class _StepEndOption extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
-            _StepHeader(icon: Icons.event_repeat_outlined, title: 'Quando termina?', subtitle: 'Opcional. Pode deixar vazio para sempre.'),
+            _StepHeader(icon: Icons.event_repeat_outlined, title: 'Termina em?', subtitle: 'Opcional. Pode deixar vazio para sempre.'),
             const SizedBox(height: 20),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -811,8 +782,9 @@ class _StepEndOption extends StatelessWidget {
             TextField(
               controller: installmentsCtrl,
               keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
               decoration: const InputDecoration(
-                labelText: 'Ou numero de prestacoes',
+                labelText: 'Nº de prestacoes',
                 hintText: 'Ex: 12',
                 suffixText: 'prestacoes',
               ),
@@ -846,7 +818,6 @@ class _StepSummary extends StatelessWidget {
   final String name;
   final double amount;
   final bool isVariable;
-  final int? dueDay;
   final int frequency;
   final Map<int, String> frequencyLabels;
   final DateTime? startDate;
@@ -858,7 +829,6 @@ class _StepSummary extends StatelessWidget {
     required this.name,
     required this.amount,
     required this.isVariable,
-    this.dueDay,
     required this.frequency,
     required this.frequencyLabels,
     this.startDate,
@@ -908,16 +878,14 @@ class _StepSummary extends StatelessWidget {
                   _SummaryRow(label: 'Tipo', value: type == ExpenseType.recurring ? 'Recorrente' : 'Unica'),
                   if (isVariable)
                     _SummaryRow(label: 'Valor', value: 'Variavel'),
-                  if (type == ExpenseType.recurring && dueDay != null)
-                    _SummaryRow(label: 'Vence dia', value: '$dueDay'),
+                  if (startDate != null)
+                    _SummaryRow(label: 'Vencimento', value: '${startDate!.day}/${startDate!.month}/${startDate!.year}'),
                   if (type == ExpenseType.recurring)
                     _SummaryRow(label: 'Frequencia', value: frequencyLabels[frequency] ?? ''),
-                  if (startDate != null)
-                    _SummaryRow(label: 'Inicio', value: '${startDate!.day}/${startDate!.month}/${startDate!.year}'),
                   if (endDate != null)
-                    _SummaryRow(label: 'Fim', value: '${endDate!.day}/${endDate!.month}/${endDate!.year}'),
+                    _SummaryRow(label: 'Termina em', value: '${endDate!.day}/${endDate!.month}/${endDate!.year}'),
                   if (installments != null)
-                    _SummaryRow(label: 'Prestacoes', value: '$installments'),
+                    _SummaryRow(label: 'Nº de prestacoes', value: '$installments'),
                 ],
               ),
             ),

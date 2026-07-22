@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/backup_service.dart';
 import '../../core/services/category_service.dart';
@@ -36,7 +37,7 @@ class SettingsPage extends StatelessWidget {
                     ListTile(
                       leading: const Icon(Icons.notifications_outlined),
                       title: const Text('Notificações'),
-                      subtitle: const Text('Resumos, semanais e atrasadas'),
+                      subtitle: const Text('Resumo mensal, semanal e lembretes'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => _showNotificationSettings(context),
                     ),
@@ -112,9 +113,9 @@ class SettingsPage extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: () => _confirmClearSeed(context),
+                    onPressed: () => _confirmClearAll(context),
                     icon: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
-                    label: const Text('Limpar dados de exemplo', style: TextStyle(color: Colors.red)),
+                    label: const Text('Limpar todos os dados', style: TextStyle(color: Colors.red)),
                     style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
                   ),
                 ),
@@ -124,7 +125,7 @@ class SettingsPage extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => _confirmReset(context),
                   icon: const Icon(Icons.restore_outlined, color: Colors.orange),
-                  label: const Text('Repor dados iniciais', style: TextStyle(color: Colors.orange)),
+                  label: const Text('Recomeçar app do zero', style: TextStyle(color: Colors.orange)),
                   style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.orange)),
                 ),
               ),
@@ -179,11 +180,11 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  void _confirmClearSeed(BuildContext context) {
+  void _confirmClearAll(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Limpar dados?'),
+        title: const Text('Limpar todos os dados?'),
         content: const Text('Isto irá eliminar todas as despesas. Esta ação não pode ser desfeita.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
@@ -216,8 +217,8 @@ class SettingsPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Repor dados iniciais?'),
-        content: const Text('Isto irá eliminar todos os dados atuais e repor as despesas e categorias de fábrica.'),
+        title: const Text('Recomeçar do zero?'),
+        content: const Text('Isto irá eliminar todos os dados (despesas e categorias personalizadas). A app ficará como se fosse a primeira vez.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
@@ -228,12 +229,11 @@ class SettingsPage extends StatelessWidget {
               for (final e in all) {
                 await repo.delete(e.id);
               }
-              await repo.seedIfEmpty();
               await catService.reset();
               if (ctx.mounted) Navigator.pop(ctx);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Dados repostos.')),
+                  const SnackBar(content: Text('App reiniciada.')),
                 );
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const HomePage()),
@@ -241,7 +241,7 @@ class SettingsPage extends StatelessWidget {
                 );
               }
             },
-            child: const Text('Repor', style: TextStyle(color: Colors.orange)),
+            child: const Text('Recomeçar', style: TextStyle(color: Colors.orange)),
           ),
         ],
       ),
@@ -356,11 +356,19 @@ class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> 
   int _overdueDays = 3;
   int _overdueHour = 9;
   int _defaultReminderDays = 3;
+  late TextEditingController _reminderDaysCtrl;
 
   @override
   void initState() {
     super.initState();
+    _reminderDaysCtrl = TextEditingController(text: '$_defaultReminderDays');
     _loadSettings();
+  }
+
+  @override
+  void dispose() {
+    _reminderDaysCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSettings() async {
@@ -377,7 +385,21 @@ class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> 
       _overdueDays = oDays;
       _overdueHour = oHour;
       _defaultReminderDays = dDays;
+      _reminderDaysCtrl.text = '$dDays';
     });
+  }
+
+  void _saveReminderDays() {
+    final value = int.tryParse(_reminderDaysCtrl.text);
+    if (value == null || value < 1 || value > 15) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Insere um valor entre 1 e 15.')),
+      );
+      _reminderDaysCtrl.text = '$_defaultReminderDays';
+      return;
+    }
+    setState(() => _defaultReminderDays = value);
+    NotificationService.setDefaultReminderDays(value);
   }
 
   String _hourLabel(int h) => '${h.toString().padLeft(2, '0')}:00';
@@ -414,15 +436,15 @@ class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> 
             ),
             _NotificationTile(
               icon: Icons.warning_amber_outlined,
-              title: 'Atrasadas',
-              subtitle: '$_overdueDays dia(s) após o vencimento, às ${_hourLabel(_overdueHour)}',
+              title: 'Despesas atrasadas',
+              subtitle: 'Lembrete $_overdueDays dia(s) após o vencimento, às ${_hourLabel(_overdueHour)}',
               onTap: () => _pickOverdueSettings(),
             ),
             const Divider(height: 32),
             Text('Lembrete padrão', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(
-              'Valor padrão para novas despesas',
+              'Valor padrão para novas despesas (1-15 dias antes)',
               style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
@@ -430,30 +452,27 @@ class _NotificationSettingsSheetState extends State<_NotificationSettingsSheet> 
               children: [
                 Icon(Icons.notifications_outlined, size: 20, color: Colors.grey.shade600),
                 const SizedBox(width: 8),
-                Text(
-                  '$_defaultReminderDays dia${_defaultReminderDays == 1 ? '' : 's'} antes',
-                  style: const TextStyle(fontSize: 14),
+                Expanded(
+                  child: TextField(
+                    keyboardType: TextInputType.number,
+                    controller: _reminderDaysCtrl,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(2),
+                    ],
+                    decoration: InputDecoration(
+                      hintText: '3',
+                      suffixText: 'dia(s) antes',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onSubmitted: (_) => _saveReminderDays(),
+                  ),
                 ),
               ],
             ),
-            Slider(
-              value: _defaultReminderDays.toDouble(),
-              min: 1,
-              max: 15,
-              divisions: 14,
-              label: '$_defaultReminderDays dia${_defaultReminderDays == 1 ? '' : 's'}',
-              onChanged: (v) async {
-                setState(() => _defaultReminderDays = v.round());
-                await NotificationService.setDefaultReminderDays(_defaultReminderDays);
-              },
-            ),
             const SizedBox(height: 8),
-            _NotificationTile(
-              icon: Icons.edit_calendar_outlined,
-              title: 'Valores por retificar',
-              subtitle: 'Verifica se despesas variáveis foram atualizadas',
-              enabled: false,
-            ),
             const SizedBox(height: 16),
           ],
         ),
@@ -599,10 +618,19 @@ class _CategoriesManagerPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Categorias')),
-      body: ListView(
+      body: ReorderableListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
+        onReorderItem: (item, newIndex) {
+          final cat = item as AppCategory;
+          final categories = catService.categories;
+          final oldIndex = categories.indexWhere((c) => c.name == cat.name);
+          if (oldIndex == -1 || oldIndex == newIndex) return;
+          catService.reorder(oldIndex, newIndex);
+          FocusScope.of(context).unfocus();
+        },
         children: [
-          ...catService.categories.map((cat) => _CategoryTile(cat: cat)),
+          for (final cat in catService.categories)
+            _CategoryTile(key: ValueKey(cat.name), cat: cat),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -626,7 +654,7 @@ class _CategoriesManagerPage extends StatelessWidget {
 
 class _CategoryTile extends StatelessWidget {
   final AppCategory cat;
-  const _CategoryTile({required this.cat});
+  const _CategoryTile({super.key, required this.cat});
 
   @override
   Widget build(BuildContext context) {
@@ -638,9 +666,15 @@ class _CategoryTile extends StatelessWidget {
         child: Icon(cat.icon, color: cat.color, size: 20),
       ),
       title: Text(cat.name),
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline, size: 20),
-        onPressed: () => _confirmDelete(context, catService),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            onPressed: () => _confirmDelete(context, catService),
+          ),
+          const Icon(Icons.drag_handle, size: 20, color: Colors.grey),
+        ],
       ),
       onTap: () => _showEditSheet(context),
     );

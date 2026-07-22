@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../core/services/category_service.dart';
 import '../../core/services/notification_service.dart';
@@ -19,7 +20,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   late TextEditingController _amountCtrl;
-  late TextEditingController _dueDayCtrl;
   late TextEditingController _installmentsCtrl;
   late ExpenseType _type;
   late bool _isVariable;
@@ -53,7 +53,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
     _amountCtrl = TextEditingController(
       text: e != null ? e.amount.toStringAsFixed(2) : '',
     );
-    _dueDayCtrl = TextEditingController(text: e?.dueDay?.toString() ?? '');
     _installmentsCtrl = TextEditingController(
       text: e?.installments?.toString() ?? '',
     );
@@ -76,9 +75,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       _amountConfirmed = false;
       _reminderDays = 3;
       _frequency = 1;
-      if (widget.initialDueDay != null) {
-        _dueDayCtrl.text = widget.initialDueDay.toString();
-      }
       _loadDefaultReminderDays();
     }
   }
@@ -92,7 +88,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
   void dispose() {
     _nameCtrl.dispose();
     _amountCtrl.dispose();
-    _dueDayCtrl.dispose();
     _installmentsCtrl.dispose();
     super.dispose();
   }
@@ -209,21 +204,9 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
                 onChanged: (v) => setState(() => _frequency = v!),
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _dueDayCtrl,
-                decoration: const InputDecoration(labelText: 'Dia do mês', hintText: '1-31'),
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final n = int.tryParse(v);
-                  if (n == null || n < 1 || n > 31) return 'Inválido (1-31)';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Data início'),
+                title: const Text('Vencimento'),
                 subtitle: Text(
                   _startDate != null
                       ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
@@ -246,7 +229,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               const SizedBox(height: 8),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Data fim'),
+                title: const Text('Termina em'),
                 subtitle: Text(
                   _endDate != null
                       ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
@@ -280,11 +263,15 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               TextFormField(
                 controller: _installmentsCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Prestações',
+                  labelText: 'Nº de prestações',
                   hintText: 'Ex: 12',
                   suffixText: 'prestações',
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(4),
+                ],
                 onChanged: (_) => setState(() {
                   if (_installmentsCtrl.text.isNotEmpty) _endDate = null;
                 }),
@@ -299,7 +286,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 child: Text(
-                  'Preencha data fim OU prestações (ou nenhum para sempre).',
+                  'Preenche "Termina em" ou "Nº de prestações" (ou nenhum para sempre).',
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ),
@@ -345,6 +332,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Nome', hintText: 'Ex: Renda'),
               textCapitalization: TextCapitalization.sentences,
+              maxLength: 50,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Obrigatório' : null,
             ),
             const SizedBox(height: 16),
@@ -352,6 +340,9 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               controller: _amountCtrl,
               decoration: const InputDecoration(labelText: 'Valor (€)', hintText: '0.00'),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[\d,.]')),
+              ],
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Obrigatório';
                 if (double.tryParse(v.replaceAll(',', '.')) == null) {
@@ -361,14 +352,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
               },
             ),
             const SizedBox(height: 24),
-            if (_isEditing)
-              SwitchListTile(
-                title: const Text('Pago'),
-                value: _isPaid,
-                onChanged: (v) => setState(() => _isPaid = v),
-                activeThumbColor: Theme.of(context).colorScheme.primary,
-                contentPadding: EdgeInsets.zero,
-              ),
             if (_isEditing && _isVariable)
               CheckboxListTile(
                 title: const Text('Valor atualizado'),
@@ -424,7 +407,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
 
     if (_isRecurring && _startDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Seleciona a data início.')),
+        const SnackBar(content: Text('Seleciona o vencimento.')),
       );
       return;
     }
@@ -437,7 +420,6 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
 
     final repo = context.read<ExpenseRepository>();
     final amount = double.parse(_amountCtrl.text.replaceAll(',', '.'));
-    final dueDay = int.tryParse(_dueDayCtrl.text);
     final installments = int.tryParse(_installmentsCtrl.text);
 
     final useInstallments = _isRecurring && installments != null && installments > 0;
@@ -451,7 +433,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..type = _type
         ..isVariable = _isVariable
         ..category = _category
-        ..dueDay = _isRecurring ? dueDay : null
+        ..dueDay = _isRecurring ? _startDate?.day : null
         ..startDate = _startDate
         ..endDate = useEndDate ? _endDate : null
         ..installments = useInstallments ? installments : null
@@ -468,7 +450,7 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..type = _type
         ..isVariable = _isVariable
         ..category = _category
-        ..dueDay = _isRecurring ? dueDay : null
+        ..dueDay = _isRecurring ? _startDate?.day : null
         ..startDate = _startDate
         ..endDate = useEndDate ? _endDate : null
         ..installments = useInstallments ? installments : null
@@ -490,12 +472,16 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Eliminar despesa?'),
-        content: Text('Eliminar "${widget.expense!.name}"?'),
+        content: Text(
+          'Eliminar "${widget.expense!.name}"?\n\n'
+          'Esta ação elimina a despesa permanentemente '
+          'de todos os meses.',
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+            child: const Text('Eliminar permanentemente', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

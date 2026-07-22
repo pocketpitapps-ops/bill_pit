@@ -72,19 +72,24 @@ const ExpenseSchema = CollectionSchema(
       name: r'reminderDays',
       type: IsarType.long,
     ),
-    r'startDate': PropertySchema(
+    r'skippedMonths': PropertySchema(
       id: 15,
+      name: r'skippedMonths',
+      type: IsarType.longList,
+    ),
+    r'startDate': PropertySchema(
+      id: 16,
       name: r'startDate',
       type: IsarType.dateTime,
     ),
     r'type': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'type',
       type: IsarType.byte,
       enumMap: _ExpensetypeEnumValueMap,
     ),
     r'updatedAt': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
@@ -114,6 +119,7 @@ int _expenseEstimateSize(
   bytesCount += 3 + object.category.length * 3;
   bytesCount += 3 + object.name.length * 3;
   bytesCount += 3 + object.paidMonths.length * 8;
+  bytesCount += 3 + object.skippedMonths.length * 8;
   return bytesCount;
 }
 
@@ -138,9 +144,10 @@ void _expenseSerialize(
   writer.writeDateTime(offsets[12], object.paidDate);
   writer.writeLongList(offsets[13], object.paidMonths);
   writer.writeLong(offsets[14], object.reminderDays);
-  writer.writeDateTime(offsets[15], object.startDate);
-  writer.writeByte(offsets[16], object.type.index);
-  writer.writeDateTime(offsets[17], object.updatedAt);
+  writer.writeLongList(offsets[15], object.skippedMonths);
+  writer.writeDateTime(offsets[16], object.startDate);
+  writer.writeByte(offsets[17], object.type.index);
+  writer.writeDateTime(offsets[18], object.updatedAt);
 }
 
 Expense _expenseDeserialize(
@@ -166,11 +173,12 @@ Expense _expenseDeserialize(
   object.paidDate = reader.readDateTimeOrNull(offsets[12]);
   object.paidMonths = reader.readLongList(offsets[13]) ?? [];
   object.reminderDays = reader.readLong(offsets[14]);
-  object.startDate = reader.readDateTimeOrNull(offsets[15]);
+  object.skippedMonths = reader.readLongList(offsets[15]) ?? [];
+  object.startDate = reader.readDateTimeOrNull(offsets[16]);
   object.type =
-      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[16])] ??
+      _ExpensetypeValueEnumMap[reader.readByteOrNull(offsets[17])] ??
       ExpenseType.recurring;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[17]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[18]);
   return object;
 }
 
@@ -212,12 +220,14 @@ P _expenseDeserializeProp<P>(
     case 14:
       return (reader.readLong(offset)) as P;
     case 15:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readLongList(offset) ?? []) as P;
     case 16:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 17:
       return (_ExpensetypeValueEnumMap[reader.readByteOrNull(offset)] ??
               ExpenseType.recurring)
           as P;
-    case 17:
+    case 18:
       return (reader.readDateTimeOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1385,6 +1395,113 @@ extension ExpenseQueryFilter
     });
   }
 
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsElementEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.equalTo(property: r'skippedMonths', value: value),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsElementGreaterThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.greaterThan(
+          include: include,
+          property: r'skippedMonths',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsElementLessThan(int value, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.lessThan(
+          include: include,
+          property: r'skippedMonths',
+          value: value,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsElementBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(
+        FilterCondition.between(
+          property: r'skippedMonths',
+          lower: lower,
+          includeLower: includeLower,
+          upper: upper,
+          includeUpper: includeUpper,
+        ),
+      );
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'skippedMonths', length, true, length, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> skippedMonthsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'skippedMonths', 0, true, 0, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'skippedMonths', 0, false, 999999, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsLengthLessThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'skippedMonths', 0, true, length, include);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsLengthGreaterThan(int length, {bool include = false}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(r'skippedMonths', length, include, 999999, true);
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition>
+  skippedMonthsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'skippedMonths',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> startDateIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(
@@ -2122,6 +2239,12 @@ extension ExpenseQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Expense, Expense, QDistinct> distinctBySkippedMonths() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'skippedMonths');
+    });
+  }
+
   QueryBuilder<Expense, Expense, QDistinct> distinctByStartDate() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'startDate');
@@ -2236,6 +2359,12 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, int, QQueryOperations> reminderDaysProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'reminderDays');
+    });
+  }
+
+  QueryBuilder<Expense, List<int>, QQueryOperations> skippedMonthsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'skippedMonths');
     });
   }
 
