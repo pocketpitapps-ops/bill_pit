@@ -148,7 +148,8 @@ class _ExpenseWizardPageState extends State<ExpenseWizardPage> {
       ..frequency = _isRecurring ? _frequency : null
       ..reminderDays = _reminderDays
       ..isPaid = false
-      ..isActive = true;
+      ..isActive = true
+      ..amountConfirmed = false;
 
     await repo.create(e);
 
