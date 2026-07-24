@@ -1,0 +1,49 @@
+name: bill_pit
+description: "Bill Pit - Controlo de despesas mensais"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  isar_community: ^3.3.2
+  isar_community_flutter_libs: ^3.3.2
+  provider: ^6.0.0
+  flutter_local_notifications: ^18.0.1
+  workmanager: ^0.9.0+3
+  fl_chart: ^0.70.2
+  intl: ^0.20.2
+  google_fonts: ^6.0.0
+  share_plus: ^10.1.4
+  path_provider: ^2.1.5
+  shared_preferences: ^2.2.3
+  audioplayers: ^6.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  isar_community_generator: ^3.3.2
+  build_runner: ^2.4.14
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/bill_pit_icon.png
+    - assets/images/bill_pit_logo_center.png
+    - assets/images/bill_pit_logo_main.png
+    - assets/audio/intro_logo.mp3
