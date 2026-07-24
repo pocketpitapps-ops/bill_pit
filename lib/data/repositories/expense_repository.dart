@@ -276,6 +276,7 @@ class ExpenseRepository {
       ..isPaid = false
       ..reminderDays = 3
       ..isActive = true
+      ..amountConfirmed = false
       ..createdAt = DateTime.now();
   }
 }

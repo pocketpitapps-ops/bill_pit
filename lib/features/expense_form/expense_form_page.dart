@@ -444,7 +444,8 @@ class _ExpenseFormPageState extends State<ExpenseFormPage> {
         ..frequency = _isRecurring ? _frequency : null
         ..reminderDays = _reminderDays
         ..isPaid = false
-        ..isActive = true;
+        ..isActive = true
+        ..amountConfirmed = false;
       savedId = await repo.create(e);
     }
     if (_isVariable) {
